@@ -156,13 +156,13 @@ if not st.session_state.finished:
     
     st.markdown(f"<div class='whisper-card'><p class='question-text'>{current_q}</p></div>", unsafe_allow_html=True)
     
-    # Pole tekstowe bez labela
     ans = st.text_area("Twoja myśl", height=150, key=f"ans_{st.session_state.step}", label_visibility="collapsed")
     
     st.write("")
-    # Wyśrodkowany przycisk
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
+    
+    # Naprawiona sekcja kolumn
+    c1, c2, c3 = st.columns([1, 1, 1])
+    with c2:
         if st.button("Uwolnij szept"):
             if ans.strip():
                 st.session_state.answers.append(ans)
@@ -195,8 +195,10 @@ else:
     st.markdown("<p style='text-align:center; color:#1E293B; letter-spacing:0.2rem; font-size:0.7rem;'>SESJA ODPOCZYWA</p>", unsafe_allow_html=True)
 
     st.write("")
-    c1, c2, c3 = st.columns([1, 1, 1])
-    with col2:
+    
+    # Naprawiona sekcja kolumn dla resetu
+    rc1, rc2, rc3 = st.columns([1, 1, 1])
+    with rc2:
         if st.button("Powróć do rytuału"):
             st.session_state.step = 0
             st.session_state.answers = []
