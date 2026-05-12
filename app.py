@@ -2,10 +2,10 @@ import streamlit as st
 import time
 import html
 from dataclasses import dataclass, asdict
-from typing import List, Dict
+from typing import List
 
 # =========================================================
-# CONFIG
+# PAGE CONFIG
 # =========================================================
 
 st.set_page_config(
@@ -140,7 +140,7 @@ html, body, [class*="css"] {
     box-shadow: 0 8px 20px rgba(48,129,208,0.35);
 }
 
-/* TEXTAREA */
+/* TEXT AREA */
 
 textarea {
     border-radius: 14px !important;
@@ -157,7 +157,20 @@ textarea {
     color: #8B9BAB;
 }
 
-/* ANIM */
+/* FINAL MESSAGE */
+
+.final-box {
+    background: linear-gradient(145deg, #131A22, #10151C);
+    border: 1px solid #26303A;
+    border-left: 5px solid #6EE7B7;
+    padding: 24px;
+    border-radius: 18px;
+    margin-top: 25px;
+    line-height: 1.8;
+    color: #DDE7F1;
+}
+
+/* ANIMATION */
 
 @keyframes fadeIn {
     from {
@@ -184,11 +197,11 @@ SCENARIO = [
 
     "Każdy człowiek szuka czegoś innego: spokoju, zrozumienia, bliskości lub ciszy. Czego najbardziej brakuje Tobie?",
 
-    "Dziękuję za Twoją szczerość. System analizuje styl komunikacji, aby dopasować Cię do osób o podobnej energii rozmowy."
+    "Dziękuję za Twoją szczerość. System analizuje styl komunikacji, aby dopasować Cię do osób o podobnym poziomie refleksyjności i emocjonalnej wrażliwości."
 ]
 
 # =========================================================
-# ANALYSIS ENGINE
+# DATA MODEL
 # =========================================================
 
 @dataclass
@@ -202,33 +215,16 @@ class IntentProfile:
     tags: List[str]
     warnings: List[str]
     final_score: int
+    resonance: str
 
+# =========================================================
+# ANALYSIS ENGINE
+# =========================================================
 
 def analyze_intent(text: str, response_time: float) -> IntentProfile:
 
     text_low = text.lower()
-
-    empathy_patterns = [
-        "czuję", "potrzebuję", "samot", "smut",
-        "boję", "tęsk", "spokój", "rozum",
-        "blisko", "cisza", "zagub"
-    ]
-
-    openness_patterns = [
-        "nigdy nikomu", "trudno mi", "ukrywam",
-        "mam wrażenie", "czasami", "nie wiem",
-        "od dawna"
-    ]
-
-    toxic_patterns = [
-        "kurw", "idiot", "debil", "nudes",
-        "seks", "ruch", "dupa", "cycki"
-    ]
-
-    shallow_patterns = [
-        "xd", "lol", "haha", "beka",
-        "troll", "memy"
-    ]
+    words = text.split()
 
     empathy = 0
     openness = 0
@@ -240,95 +236,225 @@ def analyze_intent(text: str, response_time: float) -> IntentProfile:
     tags = []
     warnings = []
 
-    # =========================================
-    # EMPATHY
-    # =========================================
+    # =====================================================
+    # EMOTIONAL SIGNALS
+    # =====================================================
 
-    empathy_hits = sum(
-        1 for pattern in empathy_patterns
-        if pattern in text_low
+    emotional_phrases = [
+        "mam wrażenie",
+        "czuję",
+        "czuję się",
+        "boję się",
+        "trudno mi",
+        "brakuje mi",
+        "czasami",
+        "od dawna",
+        "nie wiem",
+        "chciałbym",
+        "samotny",
+        "zmęczony",
+        "zagubiony",
+        "tęsknię",
+        "martwię się",
+        "przytłacza mnie",
+        "nie potrafię",
+        "potrzebuję",
+        "chciałbym być",
+        "nie radzę sobie"
+    ]
+
+    emotional_hits = sum(
+        1 for phrase in emotional_phrases
+        if phrase in text_low
     )
 
-    empathy += empathy_hits * 12
+    empathy += emotional_hits * 18
 
-    if empathy_hits >= 2:
-        tags.append("Wrażliwość emocjonalna")
+    # =====================================================
+    # DEPTH DETECTION
+    # =====================================================
 
-    # =========================================
-    # OPENNESS
-    # =========================================
+    if len(words) > 20:
+        emotional_depth += 20
 
-    openness_hits = sum(
-        1 for pattern in openness_patterns
-        if pattern in text_low
-    )
+    if len(words) > 40:
+        emotional_depth += 20
+        openness += 15
 
-    openness += openness_hits * 15
-
-    if len(text.split()) > 25:
+    if len(words) > 70:
+        emotional_depth += 25
         openness += 20
-        emotional_depth += 15
-        tags.append("Gotowość do otwarcia się")
 
-    # =========================================
-    # AUTHENTICITY
-    # =========================================
+    # =====================================================
+    # PERSONAL LANGUAGE
+    # =====================================================
 
-    avg_word_length = sum(len(w) for w in text.split()) / max(len(text.split()), 1)
+    personal_language = [
+        "ja",
+        "mnie",
+        "dla mnie",
+        "u mnie",
+        "moje",
+        "myślę",
+        "czuję"
+    ]
 
-    if avg_word_length > 4:
-        authenticity += 20
+    personal_hits = sum(
+        1 for phrase in personal_language
+        if phrase in text_low
+    )
 
-    if response_time > 8:
+    authenticity += personal_hits * 10
+
+    # =====================================================
+    # REFLECTION DETECTION
+    # =====================================================
+
+    reflective_patterns = [
+        "zastanawiam",
+        "analizuję",
+        "próbuję zrozumieć",
+        "mam wrażenie",
+        "wydaje mi się",
+        "czasem myślę",
+        "od pewnego czasu",
+        "zauważyłem",
+        "zauważyłam"
+    ]
+
+    reflection_hits = sum(
+        1 for phrase in reflective_patterns
+        if phrase in text_low
+    )
+
+    openness += reflection_hits * 15
+
+    # =====================================================
+    # NATURAL LANGUAGE QUALITY
+    # =====================================================
+
+    average_word_length = (
+        sum(len(word) for word in words)
+        / max(len(words), 1)
+    )
+
+    if average_word_length > 4.7:
+        emotional_depth += 10
+
+    if average_word_length > 5.2:
+        emotional_depth += 10
         authenticity += 10
 
-    # =========================================
+    # =====================================================
+    # RESPONSE TIME ANALYSIS
+    # =====================================================
+
+    if response_time > 8:
+        authenticity += 15
+
+    if response_time > 20:
+        openness += 10
+
+    if response_time < 2 and len(words) > 30:
+        warnings.append(
+            "Wiadomość została wysłana wyjątkowo szybko."
+        )
+
+    # =====================================================
     # TOXICITY
-    # =========================================
+    # =====================================================
+
+    toxic_patterns = [
+        "kurw",
+        "idiot",
+        "debil",
+        "ruch",
+        "cycki",
+        "dupa",
+        "nudes",
+        "seks"
+    ]
 
     toxic_hits = sum(
-        1 for pattern in toxic_patterns
-        if pattern in text_low
+        1 for phrase in toxic_patterns
+        if phrase in text_low
     )
 
-    aggression += toxic_hits * 35
+    aggression += toxic_hits * 40
 
     if toxic_hits:
-        warnings.append("Styl komunikacji może zakłócać atmosferę tej przestrzeni.")
+        warnings.append(
+            "Styl komunikacji może nie pasować do atmosfery tej przestrzeni."
+        )
 
-    # =========================================
-    # SHALLOW / MASKING
-    # =========================================
+    # =====================================================
+    # SHALLOWNESS / EMOTIONAL MASKING
+    # =====================================================
+
+    shallow_patterns = [
+        "xd",
+        "lol",
+        "haha",
+        "beka",
+        "memy"
+    ]
 
     shallow_hits = sum(
-        1 for pattern in shallow_patterns
-        if pattern in text_low
+        1 for phrase in shallow_patterns
+        if phrase in text_low
     )
 
-    humor_masking += shallow_hits * 10
+    humor_masking += shallow_hits * 12
 
     if shallow_hits >= 2:
-        warnings.append("Wykryto sygnały komunikacji maskującej emocje.")
+        warnings.append(
+            "Wykryto sygnały komunikacji maskującej emocje."
+        )
 
-    # =========================================
-    # IMPULSIVE DETECTION
-    # =========================================
-
-    if response_time < 3 and len(text.split()) > 20:
-        warnings.append("Wypowiedź została wysłana bardzo szybko.")
-
-    # =========================================
+    # =====================================================
     # FINAL SCORE
-    # =========================================
+    # =====================================================
 
     final_score = (
-        empathy * 2
+        empathy
         + openness
         + authenticity
         + emotional_depth
         - aggression * 2
         - humor_masking
     )
+
+    # =====================================================
+    # RESONANCE LEVEL
+    # =====================================================
+
+    if final_score >= 140:
+        resonance = "Głęboka synchronizacja"
+
+    elif final_score >= 90:
+        resonance = "Wysoka kompatybilność emocjonalna"
+
+    elif final_score >= 50:
+        resonance = "Umiarkowany rezonans"
+
+    else:
+        resonance = "Wstępna analiza komunikacji"
+
+    # =====================================================
+    # TAGS
+    # =====================================================
+
+    if empathy > 20:
+        tags.append("Wrażliwość emocjonalna")
+
+    if openness > 20:
+        tags.append("Otwartość")
+
+    if emotional_depth > 20:
+        tags.append("Refleksyjność")
+
+    if authenticity > 20:
+        tags.append("Autentyczna narracja")
 
     return IntentProfile(
         empathy=empathy,
@@ -339,18 +465,20 @@ def analyze_intent(text: str, response_time: float) -> IntentProfile:
         emotional_depth=emotional_depth,
         tags=tags,
         warnings=warnings,
-        final_score=final_score
+        final_score=final_score,
+        resonance=resonance
     )
 
 # =========================================================
-# SESSION
+# SESSION INIT
 # =========================================================
 
 def init_session():
+
     defaults = {
         "step": 0,
         "history": [],
-        "timer": time.time(),
+        "timer": time.time()
     }
 
     for key, value in defaults.items():
@@ -392,44 +520,49 @@ st.markdown(
 
 for entry in st.session_state.history:
 
-    safe_user_text = html.escape(entry["user"])
+    safe_text = html.escape(entry["user"])
+    profile = entry["profile"]
 
     st.markdown(
         f"""
         <div class='user-box'>
         <b>Ty:</b><br><br>
-        {safe_user_text}
+        {safe_text}
         </div>
         """,
         unsafe_allow_html=True
     )
 
-    profile = entry["profile"]
-
     score_class = (
         "score-good"
-        if profile["final_score"] >= 80
+        if profile["final_score"] >= 90
         else "score-neutral"
-        if profile["final_score"] >= 20
+        if profile["final_score"] >= 40
         else "score-bad"
     )
 
     with st.expander("🧠 Analiza stylu komunikacji"):
 
         tags_html = "".join(
-            [f"<span class='tag'>{html.escape(tag)}</span>" for tag in profile["tags"]]
+            f"<span class='tag'>{html.escape(tag)}</span>"
+            for tag in profile["tags"]
         )
 
-        warnings_html = "<br>".join(
-            [html.escape(w) for w in profile["warnings"]]
-        ) or "Brak znaczących zakłóceń komunikacyjnych."
+        warnings_html = (
+            "<br>".join(
+                html.escape(w)
+                for w in profile["warnings"]
+            )
+            if profile["warnings"]
+            else "Brak znaczących zakłóceń komunikacyjnych."
+        )
 
         st.markdown(
             f"""
             <div class='analysis-box'>
 
             <span class='{score_class}'>
-            Wynik rezonansu: {profile["final_score"]}
+            {profile["resonance"]}
             </span>
 
             <br><br>
@@ -454,7 +587,7 @@ for entry in st.session_state.history:
         )
 
 # =========================================================
-# CURRENT STEP
+# CURRENT QUESTION
 # =========================================================
 
 if st.session_state.step < len(SCENARIO):
@@ -477,19 +610,33 @@ if st.session_state.step < len(SCENARIO):
         user_input = st.text_area(
             "Twoja odpowiedź",
             height=140,
-            placeholder="Napisz spokojnie to, co naprawdę chcesz powiedzieć..."
+            placeholder="Napisz spokojnie to, co naprawdę chcesz powiedzieć...",
+            key=f"input_{st.session_state.step}"
         )
 
-        col1, col2 = st.columns([1, 1])
+        col1, col2 = st.columns(2)
 
         with col1:
             submit = st.button("Przekaż odpowiedź")
 
         with col2:
-            clear = st.button("Wyczyść")
+            reset = st.button("Reset rozmowy")
 
-        if clear:
+        # =================================================
+        # RESET
+        # =================================================
+
+        if reset:
+
+            st.session_state.step = 0
+            st.session_state.history = []
+            st.session_state.timer = time.time()
+
             st.rerun()
+
+        # =================================================
+        # SUBMIT
+        # =================================================
 
         if submit:
 
@@ -497,7 +644,10 @@ if st.session_state.step < len(SCENARIO):
                 st.warning("Wiadomość jest pusta.")
                 st.stop()
 
-            response_time = time.time() - st.session_state.timer
+            response_time = (
+                time.time()
+                - st.session_state.timer
+            )
 
             profile = analyze_intent(
                 user_input,
@@ -521,21 +671,19 @@ if st.session_state.step < len(SCENARIO):
 
 else:
 
-    st.success(
-        "Synchronizacja zakończona pomyślnie."
-    )
-
     st.markdown("""
-    <div class='architect-box'>
-    Twój styl komunikacji został przeanalizowany.
+    <div class='final-box'>
 
-    System poszukuje teraz osób,
-    których sposób prowadzenia rozmowy
-    wykazuje podobny poziom otwartości,
-    refleksyjności i emocjonalnego rezonansu.
+    Synchronizacja została zakończona.
 
-    Dziękujemy za autentyczność.
+    System przeanalizował Twój sposób komunikacji,
+    poziom refleksyjności oraz emocjonalny rezonans.
+
+    Trwa wyszukiwanie osób,
+    których energia rozmowy wykazuje podobny poziom autentyczności,
+    uważności i głębi komunikacyjnej.
+
+    Dziękujemy za szczerość.
+
     </div>
     """, unsafe_allow_html=True)
-
-    st.balloons()
