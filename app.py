@@ -51,7 +51,7 @@ if prompt := st.chat_input("Twoja odpowiedź..."):
         full_res = ""
         
         try:
-            # Używamy najbardziej stabilnej metody wywołania
+            # Używamy najbardziej stabilnej wersji modelu
             model = genai.GenerativeModel('models/gemini-1.5-flash')
             
             # Budujemy kontekst (ostatnie 4 wiadomości)
@@ -71,4 +71,13 @@ if prompt := st.chat_input("Twoja odpowiedź..."):
             # Efekt animacji pisania
             for chunk in res_text.split():
                 full_res += chunk + " "
-                
+                placeholder.write(full_res + "▌")
+                time.sleep(0.05)
+            placeholder.write(full_res)
+            st.session_state.messages.append({"role": "assistant", "content": res_text})
+            
+        except Exception as e:
+            # Sekcja naprawcza - domyka blok 'try'
+            st.error(f"Krytyczny błąd systemu: {str(e)}")
+            st.info("Sprawdź klucz API i połączenie z siecią.")
+            
