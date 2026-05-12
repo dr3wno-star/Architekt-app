@@ -3,7 +3,7 @@ import google.generativeai as genai
 import time
 
 # --- 1. KONFIGURACJA ---
-# Twój klucz API został wstawiony poniżej
+# Twój klucz API
 API_KEY = "AIzaSyBvbCY6LskhLftq3-lG_7iluiayXkv5NZY"
 genai.configure(api_key=API_KEY)
 
@@ -45,12 +45,10 @@ Mów tylko po polsku. Nie zdradzaj użytkownikowi, że go oceniasz."""
 # --- 3. DYNAMICZNY WYBÓR MODELU ---
 @st.cache_resource
 def get_working_model():
-    # Lista modeli do sprawdzenia pod kątem dostępności i limitów
     models_to_try = ['models/gemini-1.5-flash', 'models/gemini-1.5-flash-latest']
     for m in models_to_try:
         try:
             temp_model = genai.GenerativeModel(m)
-            # Test połączenia
             temp_model.generate_content("test", generation_config={"max_output_tokens": 1})
             return m
         except:
@@ -76,7 +74,6 @@ for message in st.session_state.messages:
         if "###" in full_content:
             user_text, report_text = full_content.split("###")
             st.write(user_text.strip())
-            # Raport widoczny tylko dla Ciebie pod przyciskiem
             with st.expander("👁️ RAPORT ARCHITEKTA (Poufne)"):
                 st.markdown(f"<div class='report-box'><b>ANALIZA PROFILU:</b><br>{report_text.strip()}</div>", unsafe_allow_html=True)
         else:
@@ -89,9 +86,10 @@ if prompt := st.chat_input("Napisz wiadomość..."):
         st.write(prompt)
 
     with st.chat_message("assistant"):
+        placeholder = st.empty()
+        
         try:
             model = genai.GenerativeModel(MODEL_NAME)
-            # Przesyłamy historię ostatnich wypowiedzi dla zachowania kontekstu
             context_history = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages[-4:]])
             
             final_query = f"{SYSTEM_PROMPT}\n\nOstatnia wymiana zdań:\n{context_history}\n\nArchitekt (odpisz i dodaj raport po ###):"
@@ -99,17 +97,16 @@ if prompt := st.chat_input("Napisz wiadomość..."):
             response = model.generate_content(final_query)
             res_full = response.text
             
-            # Separacja widoku użytkownika od raportu administracyjnego
             if "###" in res_full:
                 display_msg, admin_report = res_full.split("###")
                 st.write(display_msg.strip())
                 with st.expander("👁️ RAPORT ARCHITEKTA (Poufne)"):
-                    st.markdown(f<div class='report-box'><b>ANALIZA PROFILU:</b><br>{admin_report.strip()}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='report-box'><b>ANALIZA PROFILU:</b><br>{admin_report.strip()}</div>", unsafe_allow_html=True)
             else:
                 st.write(res_full)
             
             st.session_state.messages.append({"role": "assistant", "content": res_full})
             
         except Exception as e:
-            st.error(f"System napotkał trudności techniczne. Odśwież stronę.")
-                    
+            st.error(f"System napotkał trudności techniczne. Spróbuj ponownie za chwilę.")
+            
