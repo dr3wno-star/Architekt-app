@@ -2,25 +2,29 @@ import streamlit as st
 import google.generativeai as genai
 import time
 
-# 1. Konfiguracja "Mózgu" (AI)
-genai.configure(api_key="AIzaSyCPuOlL-SbSjQekmOyQAr0aeAu06rQqymM") # Wklej tu swój klucz!
-model = genai.GenerativeModel('models/gemini-1.5-flash')
+# 1. Konfiguracja "Mózgu"
+genai.configure(api_key="AIzaSyCPuOlL-SbSjQekmOyQAr0aeAu06rQqymM")
 
-# 2. Instrukcja dla AI (Niewidoczna dla użytkownika)
+# Instrukcja systemowa - definiuje charakter bota
 SYSTEM_PROMPT = """
 Jesteś 'Architektem' - inteligentnym, chłodnym, ale intrygującym botem elitarnej aplikacji. 
 Twoim zadaniem jest rozmowa z użytkownikiem, aby wybadać jego status, inteligencję i intencje.
 Zasady:
 - Nie bądź miły na siłę. Bądź konkretny.
-- Jeśli ktoś trolluje (pisze o stopach, wulgaryzmy) - bądź sarkastyczny i chłodny.
+- Jeśli ktoś trolluje (wulgaryzmy, stopy, głupoty) - bądź sarkastyczny i chłodny.
 - Jeśli ktoś pisze o celach (dom, rodzina, biznes) - okaż szacunek i drąż temat.
-- Rozmawiaj po polsku, używaj naturalnego, nowoczesnego języka.
-- Nigdy nie przyznawaj, że jesteś modelem AI od Google. Jesteś Architektem.
+- Rozmawiaj po polsku.
 """
+
+# Tworzymy model z wbudowaną instrukcją (to eliminuje błąd NotFound przy send_message)
+model = genai.GenerativeModel(
+    model_name='gemini-1.5-flash',
+    system_instruction=SYSTEM_PROMPT
+)
 
 st.set_page_config(page_title="The Architect", page_icon="🏛️")
 
-# Stylizacja wizualna
+# Wygląd
 st.markdown("""
     <style>
     .stApp { background-color: #1A1A1B; color: #C5A059; }
@@ -30,18 +34,18 @@ st.markdown("""
 
 st.title("🏛️ THE ARCHITECT")
 
+# Inicjalizacja sesji czatu
 if "chat_session" not in st.session_state:
+    # Startujemy czat bez wysyłania SYSTEM_PROMPT jako wiadomości (to naprawia błąd)
     st.session_state.chat_session = model.start_chat(history=[])
-    # Wysyłamy instrukcję systemową na starcie (ukryte)
-    st.session_state.chat_session.send_message(SYSTEM_PROMPT)
     st.session_state.messages = [{"role": "assistant", "content": "Cześć. Nie lubię tracić czasu. Powiedz mi, co sprawia, że jesteś ciekawszy od tysięcy innych ludzi w tej sieci?"}]
 
-# Wyświetlanie rozmowy
+# Wyświetlanie historii
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
 
-# Obsługa wpisywania
+# Obsługa czatu
 if prompt := st.chat_input("Napisz coś..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -51,14 +55,15 @@ if prompt := st.chat_input("Napisz coś..."):
         placeholder = st.empty()
         full_res = ""
         
-        # Pobieranie odpowiedzi od prawdziwego AI
-        response = st.session_state.chat_session.send_message(prompt)
-        
-        for chunk in response.text.split():
-            full_res += chunk + " "
-            placeholder.write(full_res + "▌")
-            time.sleep(0.05)
-        placeholder.write(full_res)
-        
-    st.session_state.messages.append({"role": "assistant", "content": response.text})
-    
+        # Pobieranie odpowiedzi
+        try:
+            response = st.session_state.chat_session.send_message(prompt)
+            for chunk in response.text.split():
+                full_res += chunk + " "
+                placeholder.write(full_res + "▌")
+                time.sleep(0.04)
+            placeholder.write(full_res)
+            st.session_state.messages.append({"role": "assistant", "content": response.text})
+        except Exception as e:
+            st.error(f"Wystąpił błąd komunikacji z AI. Sprawdź klucz API.")
+            
