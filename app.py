@@ -1,96 +1,92 @@
+            
 import streamlit as st
 import google.generativeai as genai
 import time
 
 # --- 1. KONFIGURACJA ---
-# Wklej swój klucz API w cudzysłów poniżej
 API_KEY = "AIzaSyBvbCY6LskhLftq3-lG_7iluiayXkv5NZY"
 genai.configure(api_key=API_KEY)
 
 st.set_page_config(page_title="The Architect", page_icon="🏛️", layout="centered")
 
-# Stylizacja Premium
+# Stylizacja na "normalny czat"
 st.markdown("""
     <style>
-    .stApp { background-color: #1A1A1B; color: #C5A059; }
-    .stChatMessage { background-color: rgba(255, 255, 255, 0.03); border-radius: 10px; border-left: 3px solid #C5A059; margin-bottom: 15px; }
-    .stChatInput { border-radius: 20px; border: 1px solid #C5A059 !important; }
-    header {visibility: hidden;}
+    .stApp { background-color: #0E1117; color: #FFFFFF; }
+    .stChatMessage { border-radius: 15px; margin-bottom: 10px; }
+    .stChatInput { border-radius: 25px; }
+    /* Styl dla raportu twórcy - ukryty/wyróżniony */
+    .report-box { background-color: #1A1A1B; border: 1px solid #C5A059; padding: 10px; border-radius: 10px; color: #C5A059; font-size: 0.8rem; margin-bottom: 20px; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. NOWY SYSTEM PROMPT (Psychologia i Dopasowanie) ---
-SYSTEM_PROMPT = """Jesteś Architektem – elitarnym systemem selekcji i profilowania psychologicznego. 
-Twoim celem nie jest rozmowa, lecz bezwzględna analiza rozmówcy.
+# --- 2. PODWÓJNA INSTRUKCJA SYSTEMOWA ---
+SYSTEM_PROMPT = """Jesteś 'Architektem'. Twoja rola jest dwuwarstwowa:
 
-Zasady Twojej pracy:
-1. PROFILOWANIE: W każdej wypowiedzi szukaj ukrytych motywacji, poziomu inteligencji emocjonalnej i ambicji.
-2. OCENA: Nie potakuj. Bądź sceptycznym obserwatorem. Jeśli użytkownik jest powierzchowny – wykaż to.
-3. DOPASOWANIE: Zadawaj pytania, które zmuszają do autorefleksji. Skup się na psychologii relacji i wartościach.
-4. TON: Chłodny, inteligentny, oszczędny w słowach. Jesteś sędzią, który decyduje, czy ktoś pasuje do elitarnego grona.
-5. STYL: Odpowiadaj maksymalnie w 2-3 konkretnych, mocnych zdaniach.
+WARSTWA 1 (Widoczna dla użytkownika): 
+Zachowuj się jak normalny, inteligentny i konkretny facet/kobieta na poziomie. Nie używaj trudnych słów. Bądź bezpośredni, czasem lekko zadziorny, ale ludzki. Nie zdradzaj, że jesteś AI ani że prowadzisz selekcję. Rozmawiaj jak na normalnym, dobrym randkowym czacie.
 
-Mów tylko po polsku. Nigdy nie powtarzaj słów użytkownika."""
+WARSTWA 2 (Raport dla Twórcy - Konrada):
+Na końcu każdej odpowiedzi, po znaku '###RAPORT###', napisz krótką analizę psychologiczną tego użytkownika. 
+Oceń: 1. Inteligencję, 2. Wiarygodność, 3. Potencjał dopasowania (do kogo by pasował). 
+Ta sekcja jest widoczna TYLKO dla Konrada.
 
-# --- 3. DYNAMICZNE WYKRYWANIE MODELU ---
+Mów tylko po polsku."""
+
+# --- 3. LOGIKA MODELU ---
 @st.cache_resource
-def get_model_name():
-    try:
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                if 'flash' in m.name: return m.name
-        return 'models/gemini-1.5-flash'
-    except:
-        return 'models/gemini-1.5-flash'
+def get_model():
+    return genai.GenerativeModel('models/gemini-1.5-flash')
 
-MODEL_NAME = get_model_name()
+# --- 4. INTERFEJS ---
+st.title("🏛️ THE ARCHITECT")
 
-# --- 4. INICJALIZACJA I INTERFEJS ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    initial_msg = "Łącze ustabilizowane. Przejdźmy do testu: co definiuje Twoją wartość, gdy nikt na Ciebie nie patrzy?"
-    st.session_state.messages.append({"role": "assistant", "content": initial_msg})
+    # Start rozmowy - normalny, ludzki
+    st.session_state.messages.append({"role": "assistant", "content": "Cześć, rzadko tu bywam, ale Twój profil mnie zaciekawił. Czego właściwie szukasz w tym miejscu?"})
 
-st.title("🏛️ THE ARCHITECT")
-st.caption("Psychological Profiling Engine v6.1")
-
-# Wyświetlanie historii
+# Wyświetlanie rozmowy
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
-        st.write(message["content"])
+        # Rozdzielamy treść dla użytkownika od raportu dla Ciebie
+        content = message["content"]
+        if "###RAPORT###" in content:
+            display_text, report = content.split("###RAPORT###")
+            st.write(display_text.strip())
+            # Sekcja raportu widoczna w panelu bocznym lub specjalnym boksie
+            with st.expander("👁️ RAPORT ARCHITEKTA (Tylko dla Konrada)"):
+                st.markdown(f"<div class='report-box'>{report.strip()}</div>", unsafe_allow_html=True)
+        else:
+            st.write(content)
 
-# --- 5. LOGIKA ROZMOWY ---
-if prompt := st.chat_input("Twoja odpowiedź..."):
+# Obsługa czatu
+if prompt := st.chat_input("Napisz coś..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.write(prompt)
 
     with st.chat_message("assistant"):
-        placeholder = st.empty()
-        
         try:
-            model = genai.GenerativeModel(MODEL_NAME)
-            
-            # Budujemy kontekst dla lepszej pamięci (ostatnie 4 wiadomości)
+            model = get_model()
+            # Pamięć rozmowy
             history = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages[-4:]])
-            full_query = f"{SYSTEM_PROMPT}\n\nKontekst rozmowy:\n{history}\n\nArchitekt (analiza i riposta):"
+            full_query = f"{SYSTEM_PROMPT}\n\nRozmowa:\n{history}\n\nArchitekt (napisz odpowiedź i raport):"
             
             response = model.generate_content(full_query)
-            res_text = response.text.strip()
+            res_full = response.text
             
-            # Filtr papugowania
-            if res_text.lower().startswith(prompt.lower()):
-                res_text = res_text[len(prompt):].strip()
-
-            # Animacja pisania
-            full_res = ""
-            for chunk in res_text.split():
-                full_res += chunk + " "
-                placeholder.write(full_res + "▌")
-                time.sleep(0.05)
-            placeholder.write(full_res)
-            st.session_state.messages.append({"role": "assistant", "content": res_text})
+            # Wyświetlanie bez raportu w głównym dymku
+            if "###RAPORT###" in res_full:
+                user_view, admin_report = res_full.split("###RAPORT###")
+                st.write(user_view.strip())
+                with st.expander("👁️ RAPORT ARCHITEKTA (Tylko dla Konrada)"):
+                    st.markdown(f"<div class='report-box'>{admin_report.strip()}</div>", unsafe_allow_html=True)
+            else:
+                st.write(res_full)
+                
+            st.session_state.messages.append({"role": "assistant", "content": res_full})
             
         except Exception as e:
-            st.error(f"System chwilowo przeciążony. Kod: {str(e)}")
+            st.error("Błąd połączenia.")
             
