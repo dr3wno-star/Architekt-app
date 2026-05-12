@@ -3,7 +3,7 @@ import google.generativeai as genai
 import time
 
 # 1. Konfiguracja "Mózgu" (AI)
-genai.configure(api_key="AIzaSyCPuOlL-SbSjQekmOyQAr0aeAu06rQqymM") # Wklej tu swój klucz!
+genai.configure(api_key=AIzaSyCPuOlL-SbSjQekmOyQAr0aeAu06rQqymM) # Wklej tu swój klucz!
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 # 2. Instrukcja dla AI (Niewidoczna dla użytkownika)
