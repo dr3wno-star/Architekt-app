@@ -1,16 +1,17 @@
 import streamlit as st
 import time
+import random
 import html
 from dataclasses import dataclass, asdict
 from typing import List
 
 # =========================================================
-# PAGE CONFIG
+# PAGE
 # =========================================================
 
 st.set_page_config(
-    page_title="The Architect | Resonance Gateway",
-    page_icon="🏛️",
+    page_title="The Architect",
+    page_icon="🌙",
     layout="centered"
 )
 
@@ -29,103 +30,85 @@ html, body, [class*="css"] {
 
 .stApp {
     background:
-        radial-gradient(circle at top left, #17202B 0%, transparent 35%),
-        radial-gradient(circle at bottom right, #10151C 0%, transparent 35%),
-        #0B0F14;
-    color: #E6EDF3;
+        radial-gradient(circle at top left, rgba(71,98,130,0.15), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(120,120,180,0.08), transparent 35%),
+        #090D12;
+
+    color: #E8EEF5;
+}
+
+/* Hide streamlit elements */
+
+#MainMenu {
+    visibility: hidden;
+}
+
+footer {
+    visibility: hidden;
 }
 
 /* HEADER */
 
-.main-title {
+.hero-title {
     text-align: center;
     font-size: 3rem;
     font-weight: 600;
-    margin-top: 20px;
-    margin-bottom: 5px;
+    margin-top: 30px;
+    margin-bottom: 10px;
     letter-spacing: 1px;
 }
 
-.subtitle {
+.hero-subtitle {
     text-align: center;
-    color: #8B9BAB;
-    margin-bottom: 35px;
-    font-size: 1rem;
+    color: #93A4B4;
+    margin-bottom: 40px;
+    line-height: 1.8;
 }
 
-/* BOXES */
+/* MESSAGE BOXES */
 
 .architect-box {
-    background: linear-gradient(145deg, #161B22, #11161D);
-    border: 1px solid #2D3742;
-    border-left: 5px solid #4A90E2;
+    background: linear-gradient(145deg, #121821, #0D1218);
+    border: 1px solid #24303B;
+    border-left: 4px solid #5DA9FF;
     padding: 24px;
     border-radius: 18px;
-    margin-top: 20px;
-    margin-bottom: 20px;
-    line-height: 1.8;
-    color: #D6E2EE;
-    animation: fadeIn 0.4s ease-in-out;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    margin-bottom: 25px;
+    line-height: 1.9;
+    animation: fadeIn 0.5s ease;
 }
 
 .user-box {
     background: #0F141B;
-    border: 1px solid #29313A;
+    border: 1px solid #222C36;
     padding: 18px;
     border-radius: 16px;
     margin-top: 15px;
     margin-bottom: 10px;
-    color: #C9D1D9;
+    color: #D8E1EA;
 }
 
-.analysis-box {
-    background: #131920;
-    border: 1px solid #26303A;
-    border-radius: 14px;
-    padding: 18px;
-    color: #AEBCCA;
-    line-height: 1.9;
-}
+/* PROFILE */
 
-.final-box {
-    background: linear-gradient(145deg, #131A22, #10151C);
-    border: 1px solid #26303A;
-    border-left: 5px solid #6EE7B7;
-    padding: 28px;
+.profile-box {
+    background: linear-gradient(145deg, #11161D, #0D1218);
+    border: 1px solid #26313C;
     border-radius: 18px;
-    margin-top: 25px;
+    padding: 24px;
+    margin-top: 20px;
     line-height: 1.9;
-    color: #DDE7F1;
 }
 
 /* TAGS */
 
 .tag {
     display: inline-block;
-    background: #1E2935;
-    color: #8FC7FF;
+    background: #17212C;
+    color: #8EC7FF;
     padding: 6px 12px;
     margin: 4px;
     border-radius: 999px;
     font-size: 0.8rem;
-}
-
-/* SCORES */
-
-.score-good {
-    color: #6EE7B7;
-    font-weight: 600;
-}
-
-.score-neutral {
-    color: #FACC15;
-    font-weight: 600;
-}
-
-.score-bad {
-    color: #F87171;
-    font-weight: 600;
 }
 
 /* BUTTON */
@@ -133,10 +116,10 @@ html, body, [class*="css"] {
 .stButton > button {
     width: 100%;
     border-radius: 14px;
-    background: linear-gradient(135deg, #3081D0, #1E5EA8);
+    background: linear-gradient(135deg, #4A8FE7, #2563C7);
     color: white;
     border: none;
-    padding: 0.8rem;
+    padding: 0.9rem;
     font-size: 1rem;
     font-weight: 500;
     transition: 0.3s ease;
@@ -144,24 +127,28 @@ html, body, [class*="css"] {
 
 .stButton > button:hover {
     transform: translateY(-1px);
-    box-shadow: 0 8px 20px rgba(48,129,208,0.35);
+    box-shadow: 0 8px 20px rgba(74,143,231,0.3);
 }
 
 /* TEXT AREA */
 
 textarea {
     border-radius: 14px !important;
-    background-color: #11161D !important;
+    background-color: #10161D !important;
     color: #E6EDF3 !important;
-    border: 1px solid #2C3742 !important;
+    border: 1px solid #28313A !important;
 }
 
-/* PROGRESS */
+/* FINAL */
 
-.progress-label {
-    text-align: center;
-    margin-top: 15px;
-    color: #8B9BAB;
+.final-box {
+    background: linear-gradient(145deg, #10161D, #0B1016);
+    border: 1px solid #24303B;
+    border-left: 4px solid #6EE7B7;
+    padding: 28px;
+    border-radius: 18px;
+    margin-top: 20px;
+    line-height: 1.9;
 }
 
 /* ANIMATION */
@@ -169,7 +156,7 @@ textarea {
 @keyframes fadeIn {
     from {
         opacity: 0;
-        transform: translateY(6px);
+        transform: translateY(8px);
     }
     to {
         opacity: 1;
@@ -181,360 +168,229 @@ textarea {
 """, unsafe_allow_html=True)
 
 # =========================================================
-# SCENARIO
+# QUESTIONS
 # =========================================================
 
-SCENARIO = [
-    "Witaj w przestrzeni, gdzie rozmowa ma znaczenie. Co sprawiło, że właśnie dziś poczułeś potrzebę bycia wysłuchanym?",
+QUESTIONS = [
 
-    "Wiele osób nosi w sobie rzeczy, których nigdy nie wypowiada na głos. O czym najtrudniej Ci mówić innym ludziom?",
+    "Kiedy ostatni raz poczułeś, że naprawdę możesz być sobą przy drugim człowieku?",
 
-    "Każdy człowiek szuka czegoś innego: spokoju, zrozumienia, bliskości lub ciszy. Czego najbardziej brakuje Tobie?",
+    "Jak wygląda rodzaj rozmowy, którego najbardziej Ci brakuje?",
 
-    "Dziękuję za Twoją szczerość. System analizuje wzorce komunikacji, emocjonalną głębię oraz poziom autentyczności."
+    "Co męczy Cię najbardziej w dzisiejszych relacjach między ludźmi?",
+
+    "Czy łatwo przychodzi Ci otwieranie się emocjonalnie?",
+
+    "Jak reagujesz, gdy ktoś naprawdę próbuje Cię zrozumieć?",
+
 ]
 
 # =========================================================
-# DATA MODEL
+# ARCHETYPES
+# =========================================================
+
+ARCHETYPES = {
+    "The Listener":
+        "Osoba spokojna, uważna i cierpliwa. Bardziej słucha niż mówi.",
+
+    "The Deep Diver":
+        "Silna potrzeba autentycznych i głębokich rozmów.",
+
+    "The Quiet Mind":
+        "Introwertyczna energia, ostrożność i refleksyjność.",
+
+    "The Wanderer":
+        "Człowiek szukający swojego miejsca i emocjonalnego bezpieczeństwa.",
+
+    "The Night Thinker":
+        "Duża introspekcja, analizowanie emocji i samotne przemyślenia.",
+
+    "The Soft Heart":
+        "Wysoka empatia i emocjonalna wrażliwość."
+}
+
+# =========================================================
+# PROFILE MODEL
 # =========================================================
 
 @dataclass
-class IntentProfile:
+class EmotionalProfile:
     empathy: int
-    openness: int
-    authenticity: int
-    aggression: int
-    emotional_depth: int
-    self_awareness: int
-    vulnerability: int
-    loneliness: int
-    emotional_fatigue: int
     reflection: int
-    humor_masking: int
-    resonance: str
-    final_score: int
+    vulnerability: int
+    emotional_depth: int
+    loneliness: int
+    calmness: int
+    authenticity: int
+    archetype: str
+    communication_style: str
     tags: List[str]
-    warnings: List[str]
-    matched_signals: List[str]
 
 # =========================================================
-# ANALYSIS ENGINE
+# ANALYZER
 # =========================================================
 
-def analyze_intent(text: str, response_time: float):
+def analyze_user(texts: List[str]):
 
-    text_low = text.lower()
-    words = text.split()
+    combined = " ".join(texts).lower()
 
     empathy = 0
-    openness = 0
-    authenticity = 0
-    aggression = 0
-    emotional_depth = 0
-    self_awareness = 0
-    vulnerability = 0
-    loneliness = 0
-    emotional_fatigue = 0
     reflection = 0
-    humor_masking = 0
+    vulnerability = 0
+    emotional_depth = 0
+    loneliness = 0
+    calmness = 0
+    authenticity = 0
 
     tags = []
-    warnings = []
-    matched_signals = []
 
-    # =====================================================
-    # EMOTIONAL DICTIONARIES
-    # =====================================================
-
-    empathy_patterns = [
-        "czuję", "czuję się", "potrzebuję", "tęsknię",
-        "brakuje mi", "samotny", "samotna", "smutno",
-        "boję się", "nie radzę sobie", "mam dość",
-        "przytłacza mnie", "zagubiony", "zagubiona",
-        "chciałbym", "chciałabym", "bliskość",
-        "zrozumienie", "spokój", "bezpieczeństwo",
-        "wrażliwość", "emocje", "cierpienie"
+    empathy_words = [
+        "rozumiem", "czuję", "bliskość",
+        "spokój", "empatia", "wrażliwość",
+        "zrozumienie", "emocje"
     ]
 
-    reflection_patterns = [
-        "mam wrażenie", "wydaje mi się",
-        "zastanawiam się", "analizuję",
-        "próbuję zrozumieć", "od pewnego czasu",
-        "coraz częściej", "czasami myślę",
-        "nie wiem dlaczego", "zauważyłem",
-        "zauważyłam", "uświadomiłem sobie",
-        "uświadomiłam sobie"
+    reflection_words = [
+        "zastanawiam", "analizuję",
+        "mam wrażenie", "myślę",
+        "czasami", "od dawna"
     ]
 
-    vulnerability_patterns = [
-        "trudno mi", "wstydzę się",
-        "ukrywam", "nigdy nikomu",
-        "nie potrafię", "boję się oceny",
-        "czuję się słaby", "czuję się słaba",
-        "nie mam komu powiedzieć",
-        "zamykam się w sobie"
+    vulnerability_words = [
+        "trudno mi", "boję się",
+        "ukrywam", "samotny",
+        "nie potrafię", "wstydzę"
     ]
 
-    loneliness_patterns = [
-        "sam", "samotny", "samotna",
-        "nikt mnie", "brakuje mi ludzi",
-        "czuję pustkę", "izoluję się",
-        "oddaliłem się", "oddaliłam się",
-        "nie mam z kim rozmawiać"
+    calm_words = [
+        "cisza", "spokój",
+        "spokojnie", "harmonia",
+        "bezpieczeństwo"
     ]
 
-    fatigue_patterns = [
-        "zmęczony", "zmęczona",
-        "wypalony", "wypalona",
-        "wyczerpany", "wyczerpana",
-        "przytłoczony", "przytłoczona",
-        "psychicznie", "nie mam siły"
+    loneliness_words = [
+        "sam", "samotność",
+        "pustka", "izolacja",
+        "brakuje mi"
     ]
 
-    toxic_patterns = [
-        "kurw", "idiot", "debil",
-        "dupa", "cycki", "ruch",
-        "nudes", "seks", "szmata",
-        "frajer", "zjeb"
-    ]
+    # =========================================
+    # ANALYSIS
+    # =========================================
 
-    shallow_patterns = [
-        "xd", "lol", "haha",
-        "beka", "memy", "troll"
-    ]
+    for word in empathy_words:
+        if word in combined:
+            empathy += 15
 
-    # =====================================================
-    # MATCH ENGINE
-    # =====================================================
+    for word in reflection_words:
+        if word in combined:
+            reflection += 18
 
-    for pattern in empathy_patterns:
-        if pattern in text_low:
-            empathy += 14
-            matched_signals.append(pattern)
+    for word in vulnerability_words:
+        if word in combined:
+            vulnerability += 20
 
-    for pattern in reflection_patterns:
-        if pattern in text_low:
-            reflection += 16
-            openness += 10
-            matched_signals.append(pattern)
+    for word in calm_words:
+        if word in combined:
+            calmness += 15
 
-    for pattern in vulnerability_patterns:
-        if pattern in text_low:
-            vulnerability += 18
-            authenticity += 10
-            matched_signals.append(pattern)
+    for word in loneliness_words:
+        if word in combined:
+            loneliness += 15
 
-    for pattern in loneliness_patterns:
-        if pattern in text_low:
-            loneliness += 14
-            empathy += 8
-            matched_signals.append(pattern)
+    word_count = len(combined.split())
 
-    for pattern in fatigue_patterns:
-        if pattern in text_low:
-            emotional_fatigue += 15
-            emotional_depth += 8
-            matched_signals.append(pattern)
+    if word_count > 80:
+        emotional_depth += 35
 
-    for pattern in toxic_patterns:
-        if pattern in text_low:
-            aggression += 40
-            warnings.append(
-                "Styl komunikacji może nie pasować do atmosfery tej przestrzeni."
-            )
+    if word_count > 140:
+        emotional_depth += 35
+        authenticity += 25
 
-    for pattern in shallow_patterns:
-        if pattern in text_low:
-            humor_masking += 12
-
-    # =====================================================
-    # TEXT DEPTH ANALYSIS
-    # =====================================================
-
-    if len(words) > 20:
-        emotional_depth += 20
-
-    if len(words) > 40:
-        emotional_depth += 25
-        openness += 20
-
-    if len(words) > 70:
-        emotional_depth += 30
-        openness += 20
-        authenticity += 15
-
-    # =====================================================
-    # SELF AWARENESS
-    # =====================================================
-
-    self_awareness_patterns = [
-        "rozumiem siebie",
-        "analizuję siebie",
-        "znam siebie",
-        "pracuję nad sobą",
-        "próbuję się zmienić",
-        "uświadomiłem sobie",
-        "uświadomiłam sobie"
-    ]
-
-    for pattern in self_awareness_patterns:
-        if pattern in text_low:
-            self_awareness += 20
-            matched_signals.append(pattern)
-
-    # =====================================================
-    # LANGUAGE QUALITY
-    # =====================================================
-
-    average_word_length = (
-        sum(len(word) for word in words)
-        / max(len(words), 1)
-    )
-
-    if average_word_length > 4.8:
-        emotional_depth += 10
-
-    if average_word_length > 5.3:
-        authenticity += 10
-
-    # =====================================================
-    # RESPONSE TIME
-    # =====================================================
-
-    if response_time > 8:
-        authenticity += 10
-
-    if response_time > 15:
-        openness += 10
-
-    if response_time > 25:
-        reflection += 10
-
-    if response_time < 2 and len(words) > 25:
-        warnings.append(
-            "Wiadomość została wysłana wyjątkowo szybko."
-        )
-
-    # =====================================================
-    # FINAL SCORE
-    # =====================================================
-
-    final_score = (
-        empathy
-        + openness
-        + authenticity
-        + emotional_depth
-        + self_awareness
-        + vulnerability
-        + loneliness
-        + emotional_fatigue
-        + reflection
-        - aggression * 2
-        - humor_masking
-    )
-
-    # =====================================================
-    # RESONANCE LEVEL
-    # =====================================================
-
-    if final_score >= 220:
-        resonance = "Głęboka synchronizacja emocjonalna"
-
-    elif final_score >= 150:
-        resonance = "Wysoka kompatybilność emocjonalna"
-
-    elif final_score >= 90:
-        resonance = "Wyraźny rezonans komunikacyjny"
-
-    elif final_score >= 40:
-        resonance = "Umiarkowany rezonans"
-
-    else:
-        resonance = "Wstępna analiza komunikacji"
-
-    # =====================================================
-    # TAGS
-    # =====================================================
+    if reflection > 30:
+        tags.append("Refleksyjność")
 
     if empathy > 20:
         tags.append("Empatia")
 
-    if reflection > 20:
-        tags.append("Refleksyjność")
-
     if vulnerability > 20:
         tags.append("Otwartość emocjonalna")
+
+    if calmness > 20:
+        tags.append("Potrzeba spokoju")
 
     if loneliness > 20:
         tags.append("Potrzeba bliskości")
 
-    if self_awareness > 20:
-        tags.append("Świadomość siebie")
+    # =========================================
+    # ARCHETYPE
+    # =========================================
 
-    if emotional_depth > 30:
-        tags.append("Głębia emocjonalna")
+    archetype = "The Wanderer"
 
-    return IntentProfile(
+    if reflection > 40 and emotional_depth > 40:
+        archetype = "The Night Thinker"
+
+    if empathy > 30:
+        archetype = "The Soft Heart"
+
+    if calmness > 30:
+        archetype = "The Quiet Mind"
+
+    if emotional_depth > 60:
+        archetype = "The Deep Diver"
+
+    # =========================================
+    # COMMUNICATION STYLE
+    # =========================================
+
+    if emotional_depth > 60:
+        style = "Slow Deep Talk"
+
+    elif calmness > 20:
+        style = "Quiet Emotional Bonding"
+
+    else:
+        style = "Reflective Communication"
+
+    return EmotionalProfile(
         empathy=empathy,
-        openness=openness,
-        authenticity=authenticity,
-        aggression=aggression,
-        emotional_depth=emotional_depth,
-        self_awareness=self_awareness,
-        vulnerability=vulnerability,
-        loneliness=loneliness,
-        emotional_fatigue=emotional_fatigue,
         reflection=reflection,
-        humor_masking=humor_masking,
-        resonance=resonance,
-        final_score=final_score,
-        tags=tags,
-        warnings=warnings,
-        matched_signals=matched_signals
+        vulnerability=vulnerability,
+        emotional_depth=emotional_depth,
+        loneliness=loneliness,
+        calmness=calmness,
+        authenticity=authenticity,
+        archetype=archetype,
+        communication_style=style,
+        tags=tags
     )
 
 # =========================================================
 # SESSION
 # =========================================================
 
-def init_session():
-
-    defaults = {
-        "step": 0,
-        "history": [],
-        "timer": time.time()
-    }
-
-    for key, value in defaults.items():
-        if key not in st.session_state:
-            st.session_state[key] = value
-
-init_session()
+if "step" not in st.session_state:
+    st.session_state.step = 0
+    st.session_state.answers = []
+    st.session_state.finished = False
 
 # =========================================================
 # HEADER
 # =========================================================
 
 st.markdown(
-    "<div class='main-title'>🏛️ THE ARCHITECT</div>",
+    "<div class='hero-title'>🌙 THE ARCHITECT</div>",
     unsafe_allow_html=True
 )
 
 st.markdown(
-    "<div class='subtitle'>Resonance Gateway • Emotional Compatibility Layer</div>",
-    unsafe_allow_html=True
-)
-
-# =========================================================
-# PROGRESS
-# =========================================================
-
-progress = st.session_state.step / (len(SCENARIO) - 1)
-
-st.progress(progress)
-
-st.markdown(
-    f"<div class='progress-label'>Synchronizacja: {int(progress * 100)}%</div>",
+    """
+    <div class='hero-subtitle'>
+    A calm space for authentic conversations.<br>
+    No swipes. No pressure. No performance.
+    </div>
+    """,
     unsafe_allow_html=True
 )
 
@@ -542,208 +398,145 @@ st.markdown(
 # HISTORY
 # =========================================================
 
-for entry in st.session_state.history:
+for answer in st.session_state.answers:
 
-    safe_text = html.escape(entry["user"])
-    profile = entry["profile"]
+    safe_text = html.escape(answer)
 
     st.markdown(
         f"""
         <div class='user-box'>
-        <b>Ty:</b><br><br>
         {safe_text}
         </div>
         """,
         unsafe_allow_html=True
     )
 
-    with st.expander("🧠 Szczegółowa analiza komunikacji"):
-
-        tags_html = "".join(
-            f"<span class='tag'>{tag}</span>"
-            for tag in profile["tags"]
-        )
-
-        matched_html = ", ".join(profile["matched_signals"])
-
-        warnings_html = (
-            "<br>".join(profile["warnings"])
-            if profile["warnings"]
-            else "Brak istotnych zakłóceń komunikacyjnych."
-        )
-
-        st.markdown(
-            f"""
-            <div class='analysis-box'>
-
-            <h3>{profile["resonance"]}</h3>
-
-            <b>Łączny wynik rezonansu:</b> {profile["final_score"]}
-
-            <hr>
-
-            <b>Empatia:</b> {profile["empathy"]}<br>
-            <b>Otwartość:</b> {profile["openness"]}<br>
-            <b>Autentyczność:</b> {profile["authenticity"]}<br>
-            <b>Głębia emocjonalna:</b> {profile["emotional_depth"]}<br>
-            <b>Refleksyjność:</b> {profile["reflection"]}<br>
-            <b>Świadomość siebie:</b> {profile["self_awareness"]}<br>
-            <b>Wrażliwość emocjonalna:</b> {profile["vulnerability"]}<br>
-            <b>Poczucie samotności:</b> {profile["loneliness"]}<br>
-            <b>Zmęczenie emocjonalne:</b> {profile["emotional_fatigue"]}<br>
-
-            <hr>
-
-            <b>Rozpoznane sygnały:</b><br>
-            {matched_html if matched_html else "Brak"}
-
-            <br><br>
-
-            {tags_html}
-
-            <hr>
-
-            <b>Sygnały systemowe:</b><br>
-            {warnings_html}
-
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
 # =========================================================
-# QUESTIONS
+# QUESTIONS FLOW
 # =========================================================
 
-if st.session_state.step < len(SCENARIO):
+if not st.session_state.finished:
+
+    current_question = QUESTIONS[st.session_state.step]
 
     st.markdown(
         f"""
         <div class='architect-box'>
-        {SCENARIO[st.session_state.step]}
+        {current_question}
         </div>
         """,
         unsafe_allow_html=True
     )
 
-    if st.session_state.step < len(SCENARIO) - 1:
+    user_input = st.text_area(
+        "Your response",
+        height=140,
+        placeholder="Write slowly. There is no rush here.",
+        key=f"question_{st.session_state.step}"
+    )
 
-        user_input = st.text_area(
-            "Twoja odpowiedź",
-            height=140,
-            placeholder="Napisz spokojnie to, co naprawdę chcesz powiedzieć...",
-            key=f"input_{st.session_state.step}"
-        )
+    col1, col2 = st.columns(2)
 
-        col1, col2 = st.columns(2)
+    with col1:
+        send = st.button("Continue")
 
-        with col1:
-            submit = st.button("Przekaż odpowiedź")
+    with col2:
+        reset = st.button("Reset")
 
-        with col2:
-            reset = st.button("Reset rozmowy")
+    # =========================================
+    # RESET
+    # =========================================
 
-        if reset:
+    if reset:
 
-            st.session_state.step = 0
-            st.session_state.history = []
-            st.session_state.timer = time.time()
+        st.session_state.step = 0
+        st.session_state.answers = []
+        st.session_state.finished = False
 
-            st.rerun()
+        st.rerun()
 
-        if submit:
+    # =========================================
+    # CONTINUE
+    # =========================================
 
-            if not user_input.strip():
-                st.warning("Wiadomość jest pusta.")
-                st.stop()
+    if send:
 
-            response_time = (
-                time.time()
-                - st.session_state.timer
-            )
+        if not user_input.strip():
+            st.warning("Your response is empty.")
+            st.stop()
 
-            profile = analyze_intent(
-                user_input,
-                response_time
-            )
+        st.session_state.answers.append(user_input)
 
-            st.session_state.history.append({
-                "user": user_input,
-                "profile": asdict(profile)
-            })
-
+        if st.session_state.step < len(QUESTIONS) - 1:
             st.session_state.step += 1
-            st.session_state.timer = time.time()
 
-            st.rerun()
+        else:
+            st.session_state.finished = True
+
+        st.rerun()
 
 # =========================================================
-# FINAL REPORT
+# FINAL PROFILE
 # =========================================================
 
 else:
 
-    all_scores = {
-        "Empatia": 0,
-        "Otwartość": 0,
-        "Autentyczność": 0,
-        "Głębia emocjonalna": 0,
-        "Refleksyjność": 0,
-        "Świadomość siebie": 0,
-        "Wrażliwość emocjonalna": 0,
-        "Poczucie samotności": 0,
-        "Zmęczenie emocjonalne": 0
-    }
+    profile = analyze_user(
+        st.session_state.answers
+    )
 
-    total_score = 0
+    tags_html = "".join(
+        f"<span class='tag'>{tag}</span>"
+        for tag in profile.tags
+    )
 
-    for entry in st.session_state.history:
+    st.markdown(
+        f"""
+        <div class='final-box'>
 
-        p = entry["profile"]
+        <h2>{profile.archetype}</h2>
 
-        all_scores["Empatia"] += p["empathy"]
-        all_scores["Otwartość"] += p["openness"]
-        all_scores["Autentyczność"] += p["authenticity"]
-        all_scores["Głębia emocjonalna"] += p["emotional_depth"]
-        all_scores["Refleksyjność"] += p["reflection"]
-        all_scores["Świadomość siebie"] += p["self_awareness"]
-        all_scores["Wrażliwość emocjonalna"] += p["vulnerability"]
-        all_scores["Poczucie samotności"] += p["loneliness"]
-        all_scores["Zmęczenie emocjonalne"] += p["emotional_fatigue"]
+        <i>{ARCHETYPES[profile.archetype]}</i>
 
-        total_score += p["final_score"]
+        <hr>
 
-    st.markdown(f"""
-    <div class='final-box'>
+        <b>Communication Style:</b><br>
+        {profile.communication_style}
 
-    <h2>Końcowy raport rezonansu</h2>
+        <br><br>
 
-    <b>Całkowity wynik:</b> {total_score}
+        <b>Detected emotional patterns:</b><br><br>
 
-    <hr>
+        • Empathy: {profile.empathy}<br>
+        • Reflection: {profile.reflection}<br>
+        • Vulnerability: {profile.vulnerability}<br>
+        • Emotional Depth: {profile.emotional_depth}<br>
+        • Need for Closeness: {profile.loneliness}<br>
+        • Calmness Orientation: {profile.calmness}<br>
 
-    <b>Empatia:</b> {all_scores["Empatia"]}<br>
-    <b>Otwartość:</b> {all_scores["Otwartość"]}<br>
-    <b>Autentyczność:</b> {all_scores["Autentyczność"]}<br>
-    <b>Głębia emocjonalna:</b> {all_scores["Głębia emocjonalna"]}<br>
-    <b>Refleksyjność:</b> {all_scores["Refleksyjność"]}<br>
-    <b>Świadomość siebie:</b> {all_scores["Świadomość siebie"]}<br>
-    <b>Wrażliwość emocjonalna:</b> {all_scores["Wrażliwość emocjonalna"]}<br>
-    <b>Poczucie samotności:</b> {all_scores["Poczucie samotności"]}<br>
-    <b>Zmęczenie emocjonalne:</b> {all_scores["Zmęczenie emocjonalne"]}<br>
+        <br>
 
-    <hr>
+        {tags_html}
 
-    System wykrył zwiększoną aktywność
-    w obszarach związanych z introspekcją,
-    potrzebą autentycznej komunikacji
-    oraz emocjonalnym rezonansem interpersonalnym.
+        <hr>
 
-    Analiza wskazuje,
-    że sposób prowadzenia rozmowy
-    wykazuje podwyższony poziom refleksyjności,
-    emocjonalnej świadomości
-    oraz gotowości do głębszej komunikacji.
+        The system detected a communication style
+        focused on emotional authenticity,
+        calm interaction
+        and deeper conversational bonding.
 
-    </div>
-    """, unsafe_allow_html=True)
+        Potential matches will prioritize:
+        emotional safety,
+        patience,
+        reflective communication
+        and low-pressure interaction.
+
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.info(
+        "No profile photos are shown yet. "
+        "Connection begins through conversation."
+    )
