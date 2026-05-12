@@ -3,7 +3,7 @@ import google.generativeai as genai
 import time
 
 # --- 1. KONFIGURACJA ---
-API_KEY = "AIzaSyBvbCY6LskhLftq3-lG_7iluiayXkv5NZY"
+API_KEY = "AIzaSyD4MzVof1TNHPmuqFokYoKCCupbdKhYfO0"
 genai.configure(api_key=API_KEY)
 
 st.set_page_config(page_title="The Architect", page_icon="🏛️", layout="centered")
