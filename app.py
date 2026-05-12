@@ -1,148 +1,541 @@
 import streamlit as st
 import time
+import html
+from dataclasses import dataclass, asdict
+from typing import List, Dict
 
-# --- 1. USTAWIENIA WIZUALNE ---
-st.set_page_config(page_title="The Architect | Profiling", page_icon="🏛️")
+# =========================================================
+# CONFIG
+# =========================================================
+
+st.set_page_config(
+    page_title="The Architect | Resonance Gateway",
+    page_icon="🏛️",
+    layout="centered"
+)
+
+# =========================================================
+# STYLES
+# =========================================================
 
 st.markdown("""
-    <style>
-    .stApp { background-color: #0E1117; color: #FFFFFF; }
-    .report-box { 
-        background-color: #1A1A1B; border: 1px solid #C5A059; 
-        padding: 20px; border-radius: 12px; color: #C5A059; 
-        font-family: 'Courier New', monospace; font-size: 0.9rem;
-        line-height: 1.5;
-    }
-    .arch-bubble { 
-        background-color: #1A1A1B; border-left: 4px solid #C5A059; 
-        padding: 15px; border-radius: 10px; margin: 15px 0;
-        font-style: italic; color: #E0E0E0;
-    }
-    .user-bubble { 
-        background-color: #262730; padding: 12px; 
-        border-radius: 10px; margin: 10px 0; border: 1px solid #444;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+<style>
 
-# --- 2. SCENARIUSZ PRZESŁUCHANIA (Pytania Behawioralne) ---
-# Każde pytanie jest zaprojektowane, by uderzyć w inny obszar psychiki.
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+html, body, [class*="css"] {
+    font-family: 'Inter', sans-serif;
+}
+
+.stApp {
+    background:
+        radial-gradient(circle at top left, #17202B 0%, transparent 35%),
+        radial-gradient(circle at bottom right, #10151C 0%, transparent 35%),
+        #0B0F14;
+    color: #E6EDF3;
+}
+
+/* HEADER */
+
+.main-title {
+    text-align: center;
+    font-size: 3rem;
+    font-weight: 600;
+    margin-top: 20px;
+    margin-bottom: 5px;
+    letter-spacing: 1px;
+}
+
+.subtitle {
+    text-align: center;
+    color: #8B9BAB;
+    margin-bottom: 35px;
+    font-size: 1rem;
+}
+
+/* ARCHITECT MESSAGE */
+
+.architect-box {
+    background: linear-gradient(145deg, #161B22, #11161D);
+    border: 1px solid #2D3742;
+    border-left: 5px solid #4A90E2;
+    padding: 24px;
+    border-radius: 18px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    line-height: 1.8;
+    color: #D6E2EE;
+    animation: fadeIn 0.4s ease-in-out;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+}
+
+/* USER MESSAGE */
+
+.user-box {
+    background: #0F141B;
+    border: 1px solid #29313A;
+    padding: 18px;
+    border-radius: 16px;
+    margin-top: 15px;
+    margin-bottom: 10px;
+    color: #C9D1D9;
+}
+
+/* ANALYSIS */
+
+.analysis-box {
+    background: #131920;
+    border: 1px solid #26303A;
+    border-radius: 14px;
+    padding: 18px;
+    color: #AEBCCA;
+    line-height: 1.8;
+}
+
+/* TAGS */
+
+.tag {
+    display: inline-block;
+    background: #1E2935;
+    color: #8FC7FF;
+    padding: 5px 10px;
+    margin: 4px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+}
+
+/* SCORE */
+
+.score-good {
+    color: #6EE7B7;
+    font-weight: 600;
+}
+
+.score-neutral {
+    color: #FACC15;
+    font-weight: 600;
+}
+
+.score-bad {
+    color: #F87171;
+    font-weight: 600;
+}
+
+/* BUTTON */
+
+.stButton > button {
+    width: 100%;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #3081D0, #1E5EA8);
+    color: white;
+    border: none;
+    padding: 0.8rem;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: 0.3s ease;
+}
+
+.stButton > button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(48,129,208,0.35);
+}
+
+/* TEXTAREA */
+
+textarea {
+    border-radius: 14px !important;
+    background-color: #11161D !important;
+    color: #E6EDF3 !important;
+    border: 1px solid #2C3742 !important;
+}
+
+/* PROGRESS */
+
+.progress-label {
+    text-align: center;
+    margin-top: 15px;
+    color: #8B9BAB;
+}
+
+/* ANIM */
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0px);
+    }
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+# =========================================================
+# SCENARIO
+# =========================================================
+
 SCENARIO = [
-    "Większość ludzi tylko odgrywa role. Opisz sytuację z ostatniego roku, w której musiałeś zdjąć maskę i pokazać swoją prawdziwą, niekoniecznie idealną naturę. Co to o Tobie mówi?",
-    "Wyobraź sobie, że osiągasz absolutny szczyt swoich marzeń, ale ceną jest całkowita samotność. Wchodzisz w to, czy szukasz kompromisu? Uzasadnij wybór.",
-    "Gdybyś miał moc usunięcia jednej cechy z ludzkiej psychiki, co by to było i dlaczego akurat to Cię tak irytuje?",
-    "Analiza danych zakończona. System generuje ostateczny profil tożsamości."
+    "Witaj w przestrzeni, gdzie rozmowa ma znaczenie. Co sprawiło, że właśnie dziś poczułeś potrzebę bycia wysłuchanym?",
+
+    "Wiele osób nosi w sobie rzeczy, których nigdy nie wypowiada na głos. O czym najtrudniej Ci mówić innym ludziom?",
+
+    "Każdy człowiek szuka czegoś innego: spokoju, zrozumienia, bliskości lub ciszy. Czego najbardziej brakuje Tobie?",
+
+    "Dziękuję za Twoją szczerość. System analizuje styl komunikacji, aby dopasować Cię do osób o podobnej energii rozmowy."
 ]
 
-# --- 3. ROZBUDOWANY SILNIK ANALIZY ---
-def deep_profile_analysis(text, response_time):
-    traits = []
-    red_flags = []
-    green_flags = []
-    
+# =========================================================
+# ANALYSIS ENGINE
+# =========================================================
+
+@dataclass
+class IntentProfile:
+    empathy: int
+    openness: int
+    authenticity: int
+    aggression: int
+    humor_masking: int
+    emotional_depth: int
+    tags: List[str]
+    warnings: List[str]
+    final_score: int
+
+
+def analyze_intent(text: str, response_time: float) -> IntentProfile:
+
     text_low = text.lower()
-    words = text.split()
-    word_count = len(words)
 
-    # --- ANALIZA 1: SPRAWCZOŚĆ I DOMINACJA ---
-    dominance_markers = ["zrobię", "osiągnąłem", "decydować", "kontrola", "wynik", "moje", "zbudowałem"]
-    submission_markers = ["może", "chyba", "nie wiem", "trudno", "inni", "pewnie", "chciałbym"]
-    
-    dom_score = sum(1 for w in dominance_markers if w in text_low)
-    sub_score = sum(1 for w in submission_markers if w in text_low)
+    empathy_patterns = [
+        "czuję", "potrzebuję", "samot", "smut",
+        "boję", "tęsk", "spokój", "rozum",
+        "blisko", "cisza", "zagub"
+    ]
 
-    if dom_score > sub_score:
-        traits.append("Wysoka Sprawczość (Typ Lidera)")
-        green_flags.append("Bierze odpowiedzialność za narrację")
-    elif sub_score > dom_score:
-        traits.append("Unikanie Odpowiedzialności (Typ Reaktywny)")
-        red_flags.append("Niskie poczucie kontroli nad własnym życiem")
+    openness_patterns = [
+        "nigdy nikomu", "trudno mi", "ukrywam",
+        "mam wrażenie", "czasami", "nie wiem",
+        "od dawna"
+    ]
 
-    # --- ANALIZA 2: INTELIGENCJA EMOCJONALNA (EQ) ---
-    eq_keywords = ["czuję", "zrozumiałem", "relacja", "empatia", "perspektywa", "wybaczam", "ludzie"]
-    if any(w in text_low for w in eq_keywords):
-        traits.append("Wysokie EQ / Świadomość Emocjonalna")
-    else:
-        traits.append("Niskie EQ / Chłód Analityczny")
+    toxic_patterns = [
+        "kurw", "idiot", "debil", "nudes",
+        "seks", "ruch", "dupa", "cycki"
+    ]
 
-    # --- ANALIZA 3: PROFIL WARTOŚCI ---
-    if any(w in text_low for w in ["pieniądze", "prestiż", "władza", "status", "zysk"]):
-        traits.append("Orientacja na Status i Zasoby")
-    if any(w in text_low for w in ["prawda", "zasady", "honor", "lojalność", "etyka"]):
-        traits.append("Orientacja na Kodeks Wartości")
-    if any(w in text_low for w in ["wolność", "podróże", "niezależność", "wybór"]):
-        traits.append("Wysoka Potrzeba Autonomii")
+    shallow_patterns = [
+        "xd", "lol", "haha", "beka",
+        "troll", "memy"
+    ]
 
-    # --- ANALIZA 4: STABILNOŚĆ I STRES ---
-    if response_time < 2.5:
-        traits.append("Impulsywność / Szybka Intuicja")
-    elif response_time > 12:
-        traits.append("Głęboka Refleksyjność / Ukrywanie Prawdy")
+    empathy = 0
+    openness = 0
+    authenticity = 0
+    aggression = 0
+    humor_masking = 0
+    emotional_depth = 0
 
-    if "..." in text or text.isupper():
-        red_flags.append("Niestabilność emocjonalna / Ukryta frustracja")
+    tags = []
+    warnings = []
 
-    # --- ANALIZA 5: ELOKWENCJA ---
-    if word_count > 30:
-        green_flags.append("Zdolność do autoanalizy i bogate słownictwo")
-    elif word_count < 6:
-        red_flags.append("Płytkość wypowiedzi / Brak chęci do współpracy")
+    # =========================================
+    # EMPATHY
+    # =========================================
 
-    return traits, red_flags, green_flags, word_count
+    empathy_hits = sum(
+        1 for pattern in empathy_patterns
+        if pattern in text_low
+    )
 
-# --- 4. INTERFEJS ---
-st.title("🏛️ THE ARCHITECT")
-st.caption("Advanced Behavioral & Psychological Profiling v2.0")
+    empathy += empathy_hits * 12
 
-if "step" not in st.session_state:
-    st.session_state.step = 0
-    st.session_state.history = []
-    st.session_state.timer = time.time()
+    if empathy_hits >= 2:
+        tags.append("Wrażliwość emocjonalna")
 
-# Wyświetlanie czatu i raportów
+    # =========================================
+    # OPENNESS
+    # =========================================
+
+    openness_hits = sum(
+        1 for pattern in openness_patterns
+        if pattern in text_low
+    )
+
+    openness += openness_hits * 15
+
+    if len(text.split()) > 25:
+        openness += 20
+        emotional_depth += 15
+        tags.append("Gotowość do otwarcia się")
+
+    # =========================================
+    # AUTHENTICITY
+    # =========================================
+
+    avg_word_length = sum(len(w) for w in text.split()) / max(len(text.split()), 1)
+
+    if avg_word_length > 4:
+        authenticity += 20
+
+    if response_time > 8:
+        authenticity += 10
+
+    # =========================================
+    # TOXICITY
+    # =========================================
+
+    toxic_hits = sum(
+        1 for pattern in toxic_patterns
+        if pattern in text_low
+    )
+
+    aggression += toxic_hits * 35
+
+    if toxic_hits:
+        warnings.append("Styl komunikacji może zakłócać atmosferę tej przestrzeni.")
+
+    # =========================================
+    # SHALLOW / MASKING
+    # =========================================
+
+    shallow_hits = sum(
+        1 for pattern in shallow_patterns
+        if pattern in text_low
+    )
+
+    humor_masking += shallow_hits * 10
+
+    if shallow_hits >= 2:
+        warnings.append("Wykryto sygnały komunikacji maskującej emocje.")
+
+    # =========================================
+    # IMPULSIVE DETECTION
+    # =========================================
+
+    if response_time < 3 and len(text.split()) > 20:
+        warnings.append("Wypowiedź została wysłana bardzo szybko.")
+
+    # =========================================
+    # FINAL SCORE
+    # =========================================
+
+    final_score = (
+        empathy * 2
+        + openness
+        + authenticity
+        + emotional_depth
+        - aggression * 2
+        - humor_masking
+    )
+
+    return IntentProfile(
+        empathy=empathy,
+        openness=openness,
+        authenticity=authenticity,
+        aggression=aggression,
+        humor_masking=humor_masking,
+        emotional_depth=emotional_depth,
+        tags=tags,
+        warnings=warnings,
+        final_score=final_score
+    )
+
+# =========================================================
+# SESSION
+# =========================================================
+
+def init_session():
+    defaults = {
+        "step": 0,
+        "history": [],
+        "timer": time.time(),
+    }
+
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+init_session()
+
+# =========================================================
+# HEADER
+# =========================================================
+
+st.markdown(
+    "<div class='main-title'>🏛️ THE ARCHITECT</div>",
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    "<div class='subtitle'>Resonance Gateway • Emotional Compatibility Layer</div>",
+    unsafe_allow_html=True
+)
+
+# =========================================================
+# PROGRESS
+# =========================================================
+
+progress = st.session_state.step / (len(SCENARIO) - 1)
+
+st.progress(progress)
+
+st.markdown(
+    f"<div class='progress-label'>Synchronizacja: {int(progress * 100)}%</div>",
+    unsafe_allow_html=True
+)
+
+# =========================================================
+# CHAT HISTORY
+# =========================================================
+
 for entry in st.session_state.history:
-    st.markdown(f"<div class='user-bubble'><b>Kandydat:</b> {entry['user']}</div>", unsafe_allow_html=True)
-    with st.expander("👁️ RAPORT Z ANALIZY"):
-        st.markdown(f"""
-        <div class='report-box'>
-        <b>PROFIL PSYCHOLOGICZNY:</b><br>
-        - Główne cechy: {', '.join(entry['traits'])}<br><br>
-        <b>SYGNAŁY (FLAGS):</b><br>
-        <span style='color: #4CAF50;'>🟢 GREEN:</span> {', '.join(entry['greens']) if entry['greens'] else 'Brak'}<br>
-        <span style='color: #F44336;'>🔴 RED:</span> {', '.join(entry['reds']) if entry['reds'] else 'Brak'}<br><br>
-        <b>DANE TECHNICZNE:</b><br>
-        - Czas namysłu: {entry['time']:.2f}s | Długość: {entry['words']} słów
-        </div>
-        """, unsafe_allow_html=True)
 
-# Pytanie Architekta
+    safe_user_text = html.escape(entry["user"])
+
+    st.markdown(
+        f"""
+        <div class='user-box'>
+        <b>Ty:</b><br><br>
+        {safe_user_text}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    profile = entry["profile"]
+
+    score_class = (
+        "score-good"
+        if profile["final_score"] >= 80
+        else "score-neutral"
+        if profile["final_score"] >= 20
+        else "score-bad"
+    )
+
+    with st.expander("🧠 Analiza stylu komunikacji"):
+
+        tags_html = "".join(
+            [f"<span class='tag'>{html.escape(tag)}</span>" for tag in profile["tags"]]
+        )
+
+        warnings_html = "<br>".join(
+            [html.escape(w) for w in profile["warnings"]]
+        ) or "Brak znaczących zakłóceń komunikacyjnych."
+
+        st.markdown(
+            f"""
+            <div class='analysis-box'>
+
+            <span class='{score_class}'>
+            Wynik rezonansu: {profile["final_score"]}
+            </span>
+
+            <br><br>
+
+            <b>Empatia:</b> {profile["empathy"]}<br>
+            <b>Otwartość:</b> {profile["openness"]}<br>
+            <b>Autentyczność:</b> {profile["authenticity"]}<br>
+            <b>Głębia emocjonalna:</b> {profile["emotional_depth"]}<br>
+
+            <br>
+
+            {tags_html}
+
+            <br><br>
+
+            <b>Sygnały systemowe:</b><br>
+            {warnings_html}
+
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+# =========================================================
+# CURRENT STEP
+# =========================================================
+
 if st.session_state.step < len(SCENARIO):
-    st.markdown(f"<div class='arch-bubble'><b>Architekt:</b> {SCENARIO[st.session_state.step]}</div>", unsafe_allow_html=True)
-    
+
+    st.markdown(
+        f"""
+        <div class='architect-box'>
+        {SCENARIO[st.session_state.step]}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # =====================================================
+    # INPUT
+    # =====================================================
+
     if st.session_state.step < len(SCENARIO) - 1:
-        with st.form(key=f"form_{st.session_state.step}"):
-            u_input = st.text_area("Twoja odpowiedź:", height=100)
-            submit = st.form_submit_button("Wyślij do weryfikacji")
-            
-            if submit and u_input:
-                resp_t = time.time() - st.session_state.timer
-                tr, rd, gr, wc = deep_profile_analysis(u_input, resp_t)
-                
-                st.session_state.history.append({
-                    "user": u_input,
-                    "traits": tr,
-                    "reds": rd,
-                    "greens": gr,
-                    "time": resp_t,
-                    "words": wc
-                })
-                st.session_state.step += 1
-                st.session_state.timer = time.time()
-                st.rerun()
+
+        user_input = st.text_area(
+            "Twoja odpowiedź",
+            height=140,
+            placeholder="Napisz spokojnie to, co naprawdę chcesz powiedzieć..."
+        )
+
+        col1, col2 = st.columns([1, 1])
+
+        with col1:
+            submit = st.button("Przekaż odpowiedź")
+
+        with col2:
+            clear = st.button("Wyczyść")
+
+        if clear:
+            st.rerun()
+
+        if submit:
+
+            if not user_input.strip():
+                st.warning("Wiadomość jest pusta.")
+                st.stop()
+
+            response_time = time.time() - st.session_state.timer
+
+            profile = analyze_intent(
+                user_input,
+                response_time
+            )
+
+            st.session_state.history.append({
+                "user": user_input,
+                "profile": asdict(profile),
+                "response_time": response_time
+            })
+
+            st.session_state.step += 1
+            st.session_state.timer = time.time()
+
+            st.rerun()
+
+# =========================================================
+# FINAL SCREEN
+# =========================================================
+
 else:
-    st.success("Profilowanie zakończone. System dokonał kategoryzacji obiektu.")
-    if st.button("Nowa sesja"):
-        st.session_state.step = 0
-        st.session_state.history = []
-        st.rerun()
-        
+
+    st.success(
+        "Synchronizacja zakończona pomyślnie."
+    )
+
+    st.markdown("""
+    <div class='architect-box'>
+    Twój styl komunikacji został przeanalizowany.
+
+    System poszukuje teraz osób,
+    których sposób prowadzenia rozmowy
+    wykazuje podobny poziom otwartości,
+    refleksyjności i emocjonalnego rezonansu.
+
+    Dziękujemy za autentyczność.
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.balloons()
