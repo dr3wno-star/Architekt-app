@@ -65,5 +65,5 @@ if prompt := st.chat_input("Napisz coś..."):
             placeholder.write(full_res)
             st.session_state.messages.append({"role": "assistant", "content": response.text})
         except Exception as e:
-            st.error(f"Wystąpił błąd komunikacji z AI. Sprawdź klucz API.")
+            st.error(f"Szczegóły błędu: {e}")
             
