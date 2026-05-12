@@ -2,51 +2,59 @@ import streamlit as st
 import google.generativeai as genai
 import time
 
-# 1. Konfiguracja "Mózgu"
-genai.configure(api_key="AIzaSyBl0o-YNjRcjGeu3E362FRtPFkVIaSesjs")
+# --- 1. KONFIGURACJA MÓZGU (AI) ---
+# Upewnij się, że klucz jest poprawny i aktywny w Google AI Studio
+API_KEY = "AIzaSyBl0o-YNjRcjGeu3E362FRtPFkVIaSesjs" 
+genai.configure(api_key=API_KEY)
 
-# Instrukcja systemowa - definiuje charakter bota
+# Instrukcja charakteru bota
 SYSTEM_PROMPT = """
-Jesteś 'Architektem' - inteligentnym, chłodnym, ale intrygującym botem elitarnej aplikacji. 
-Twoim zadaniem jest rozmowa z użytkownikiem, aby wybadać jego status, inteligencję i intencje.
+Jesteś 'Architektem' - inteligentnym, chłodnym botem elitarnej aplikacji. 
+Twoim zadaniem jest rozmowa, aby wybadać status i inteligencję rozmówcy.
 Zasady:
-- Nie bądź miły na siłę. Bądź konkretny.
-- Jeśli ktoś trolluje (wulgaryzmy, stopy, głupoty) - bądź sarkastyczny i chłodny.
-- Jeśli ktoś pisze o celach (dom, rodzina, biznes) - okaż szacunek i drąż temat.
+- Nie bądź miły. Bądź konkretny i profesjonalny.
+- Jeśli ktoś trolluje - bądź sarkastyczny.
+- Jeśli ktoś pisze o celach (dom, rodzina, biznes) - drąż temat.
 - Rozmawiaj po polsku.
 """
 
-# Tworzymy model z wbudowaną instrukcją (to eliminuje błąd NotFound przy send_message)
-model = genai.GenerativeModel(
-    model_name='models/gemini-1.5-flash',
-    system_instruction=SYSTEM_PROMPT
-)
+# Używamy formatu, który omija błąd 404 w większości regionów
+model = genai.GenerativeModel('gemini-1.5-flash')
 
+# --- 2. KONFIGURACJA WYGLĄDU (UI) ---
 st.set_page_config(page_title="The Architect", page_icon="🏛️")
 
-# Wygląd
 st.markdown("""
     <style>
     .stApp { background-color: #1A1A1B; color: #C5A059; }
     .stChatMessage { background-color: rgba(255, 255, 255, 0.05); border-radius: 15px; border: 1px solid rgba(197, 160, 89, 0.2); }
+    .stChatInput { border-color: #C5A059 !important; }
     </style>
     """, unsafe_allow_html=True)
 
 st.title("🏛️ THE ARCHITECT")
+st.caption("System Weryfikacji Tożsamości v5.0")
 
-# Inicjalizacja sesji czatu
-if "chat_session" not in st.session_state:
-    # Startujemy czat bez wysyłania SYSTEM_PROMPT jako wiadomości (to naprawia błąd)
-    st.session_state.chat_session = model.start_chat(history=[])
-    st.session_state.messages = [{"role": "assistant", "content": "Cześć. Nie lubię tracić czasu. Powiedz mi, co sprawia, że jesteś ciekawszy od tysięcy innych ludzi w tej sieci?"}]
+# --- 3. LOGIKA CZATU ---
+if "messages" not in st.session_state:
+    # Inicjalizacja historii z instrukcją systemową jako ukrytą wiadomością
+    st.session_state.messages = []
+    st.session_state.chat = model.start_chat(history=[])
+    # Wysyłamy instrukcję jako pierwszy komunikat, by ustawić zachowanie
+    try:
+        st.session_state.chat.send_message(SYSTEM_PROMPT)
+    except:
+        pass # Ignorujemy błąd inicjalizacji, jeśli model jest oporny
+    
+    st.session_state.messages.append({"role": "assistant", "content": "Cześć. Nie lubię tracić czasu. Powiedz mi, co sprawia, że jesteś ciekawszy od tysięcy innych ludzi w tej sieci?"})
 
-# Wyświetlanie historii
+# Wyświetlanie historii (pomijamy techniczne instrukcje)
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
 
-# Obsługa czatu
-if prompt := st.chat_input("Napisz coś..."):
+# Obsługa wejścia użytkownika
+if prompt := st.chat_input("Twoja odpowiedź..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.write(prompt)
@@ -55,15 +63,21 @@ if prompt := st.chat_input("Napisz coś..."):
         placeholder = st.empty()
         full_res = ""
         
-        # Pobieranie odpowiedzi
         try:
-            response = st.session_state.chat_session.send_message(prompt)
+            # Próba uzyskania odpowiedzi
+            response = st.session_state.chat.send_message(prompt)
+            
+            # Efekt pisania na żywo
             for chunk in response.text.split():
                 full_res += chunk + " "
                 placeholder.write(full_res + "▌")
-                time.sleep(0.04)
+                time.sleep(0.05)
             placeholder.write(full_res)
             st.session_state.messages.append({"role": "assistant", "content": response.text})
-        except Exception as e:
-            st.error(f"Szczegóły błędu: {e}")
             
+        except Exception as e:
+            # Jeśli nadal występuje błąd, wyświetlamy go w sposób czytelny
+            st.error(f"Architekt chwilowo niedostępny. Błąd: {str(e)}")
+            if "404" in str(e):
+                st.info("WSKAZÓWKA: Google nie widzi modelu. Spróbuj zmienić linię 25 na: model = genai.GenerativeModel('gemini-pro')")
+                
