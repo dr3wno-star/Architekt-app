@@ -1,10 +1,26 @@
 import streamlit as st
-import random
+import google.generativeai as genai
 import time
 
-# Konfiguracja stylu
+# 1. Konfiguracja "Mózgu" (AI)
+genai.configure(api_key="AIzaSyCPuOlL-SbSjQekmOyQAr0aeAu06rQqymM") # Wklej tu swój klucz!
+model = genai.GenerativeModel('gemini-1.5-flash')
+
+# 2. Instrukcja dla AI (Niewidoczna dla użytkownika)
+SYSTEM_PROMPT = """
+Jesteś 'Architektem' - inteligentnym, chłodnym, ale intrygującym botem elitarnej aplikacji. 
+Twoim zadaniem jest rozmowa z użytkownikiem, aby wybadać jego status, inteligencję i intencje.
+Zasady:
+- Nie bądź miły na siłę. Bądź konkretny.
+- Jeśli ktoś trolluje (pisze o stopach, wulgaryzmy) - bądź sarkastyczny i chłodny.
+- Jeśli ktoś pisze o celach (dom, rodzina, biznes) - okaż szacunek i drąż temat.
+- Rozmawiaj po polsku, używaj naturalnego, nowoczesnego języka.
+- Nigdy nie przyznawaj, że jesteś modelem AI od Google. Jesteś Architektem.
+"""
+
 st.set_page_config(page_title="The Architect", page_icon="🏛️")
 
+# Stylizacja wizualna
 st.markdown("""
     <style>
     .stApp { background-color: #1A1A1B; color: #C5A059; }
@@ -12,53 +28,37 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "Cześć. Nie lubię tracić czasu na uprzejmości. Powiedz mi po prostu: po co tu jesteś?"}]
+st.title("🏛️ THE ARCHITECT")
 
-# Wyświetlanie historii
+if "chat_session" not in st.session_state:
+    st.session_state.chat_session = model.start_chat(history=[])
+    # Wysyłamy instrukcję systemową na starcie (ukryte)
+    st.session_state.chat_session.send_message(SYSTEM_PROMPT)
+    st.session_state.messages = [{"role": "assistant", "content": "Cześć. Nie lubię tracić czasu. Powiedz mi, co sprawia, że jesteś ciekawszy od tysięcy innych ludzi w tej sieci?"}]
+
+# Wyświetlanie rozmowy
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.write(message["content"])
 
-# Logika dynamicznego reagowania
-def get_dynamic_response(user_input):
-    ui = user_input.lower()
-    
-    # 1. Reakcja na krótkie odpowiedzi (Siema, ok, itp)
-    if len(ui.split()) < 3:
-        responses = [
-            "Oszczędnie. Czy w życiu też robisz tylko absolutne minimum?",
-            "Mało konkretów. Boisz się, że powiem Ci o Tobie coś, czego nie chcesz usłyszeć?",
-            "Siema. Ale przejdźmy do rzeczy - co Cię tu sprowadza?"
-        ]
-        return random.choice(responses)
-
-    # 2. Reakcja na ambicje (dom, pieniądze, rodzina)
-    if any(word in ui for word in ["dom", "rodzina", "buduj", "pieniadze", "sukces"]):
-        return "Budowanie fundamentów... to brzmi jak plan. Większość tu tylko marzy, a Ty wyglądasz na kogoś, kto działa. Co jest najtrudniejsze w Twoim projekcie?"
-
-    # 3. Reakcja na toksyczność (trolle)
-    if any(word in ui for word in ["dupa", "cycki", "kurwa", "nuda"]):
-        return "Tania prowokacja. Myślisz, że to wystarczy, żeby mnie zainteresować? Spróbuj jeszcze raz, tym razem z sensem."
-
-    # 4. Uniwersalna odpowiedź "inteligentna"
-    return "Ciekawy punkt widzenia. To rzadkie spotkać kogoś, kto nie mówi wyuczonymi regułkami. Co byś zrobił, gdybyś wiedział, że nie możesz zawieść?"
-
-# Interfejs użytkownika
+# Obsługa wpisywania
 if prompt := st.chat_input("Napisz coś..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.write(prompt)
 
     with st.chat_message("assistant"):
-        response = get_dynamic_response(prompt)
-        # Efekt pisania na żywo
         placeholder = st.empty()
         full_res = ""
-        for char in response:
-            full_res += char
-            placeholder.write(full_res + "▌")
-            time.sleep(0.02)
-        placeholder.write(full_res)
-        st.session_state.messages.append({"role": "assistant", "content": full_res})
         
+        # Pobieranie odpowiedzi od prawdziwego AI
+        response = st.session_state.chat_session.send_message(prompt)
+        
+        for chunk in response.text.split():
+            full_res += chunk + " "
+            placeholder.write(full_res + "▌")
+            time.sleep(0.05)
+        placeholder.write(full_res)
+        
+    st.session_state.messages.append({"role": "assistant", "content": response.text})
+    
