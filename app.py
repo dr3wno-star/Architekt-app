@@ -4,7 +4,7 @@ import time
 
 # --- 1. KONFIGURACJA KLUCZA ---
 # Pamiętaj, aby wkleić tu swój aktualny klucz z Google AI Studio
-API_KEY = "AIzaSyBl0o-YNjRcjGeu3E362FRtPFkVIaSesjs"
+API_KEY = "AIzaSyAIeaCG_UIIhZty4JWX406VF0l464hTj-8"
 genai.configure(api_key=API_KEY)
 
 # --- 2. USTAWIENIA WIZUALNE ---
