@@ -19,7 +19,7 @@ Zasady:
 """
 
 # Używamy formatu, który omija błąd 404 w większości regionów
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-pro')
 
 # --- 2. KONFIGURACJA WYGLĄDU (UI) ---
 st.set_page_config(page_title="The Architect", page_icon="🏛️")
