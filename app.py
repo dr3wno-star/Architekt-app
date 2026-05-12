@@ -31,7 +31,9 @@ def find_accessible_model():
                 return m.name
     return None
 
-MODEL_NAME = find_accessible_model()
+# Flash jest prawie zawsze darmowy i dostępny
+MODEL_NAME = 'models/gemini-1.5-flash'
+
 
 # --- 3. LOGIKA CZATU ---
 SYSTEM_PROMPT = "Jesteś Architektem. Chłodny, elitarny ton. Selekcja randkowa. Mów po polsku."
@@ -56,13 +58,15 @@ if prompt := st.chat_input("Twoja odpowiedź..."):
         if not MODEL_NAME:
             st.error("Błąd: Twoje konto Google AI nie ma przypisanych żadnych modeli. Wejdź na Google AI Studio i zaakceptuj warunki.")
         else:
-            try:
-                # Używamy modelu wykrytego automatycznie
+                        try:
                 model = genai.GenerativeModel(MODEL_NAME)
-                full_query = f"{SYSTEM_PROMPT}\n\nUżytkownik: {prompt}\nArchitekt:"
-                
-                response = model.generate_content(full_query)
+                # Krótszy prompt zużywa mniej "tokenów" (Twojego limitu)
+                response = model.generate_content(
+                    f"{SYSTEM_PROMPT}\nUżytkownik: {prompt}",
+                    generation_config={"max_output_tokens": 100} 
+                )
                 res_text = response.text
+                            
                 
                 full_res = ""
                 for chunk in res_text.split():
