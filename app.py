@@ -81,7 +81,7 @@ textarea {
     text-align: center !important;
 }
 
-/* Przyciski - subtelne */
+/* Przyciski */
 .stButton > button {
     background: transparent !important;
     color: #64748B !important;
@@ -90,6 +90,7 @@ textarea {
     padding: 0.5rem 2rem !important;
     transition: 0.5s;
     letter-spacing: 0.1rem;
+    width: 100%;
 }
 
 .stButton > button:hover {
@@ -130,10 +131,18 @@ def analyze_aura(answers):
     return auras[:2] if auras else ["Czysta Karta"]
 
 # =========================================================
-# INTERFEJS SZEPTU
+# SYSTEM SESJI
 # =========================================================
 
-# Nagłówek marki
+if "step" not in st.session_state:
+    st.session_state.step = 0
+    st.session_state.answers = []
+    st.session_state.finished = False
+
+# =========================================================
+# INTERFEJS
+# =========================================================
+
 st.markdown("""
     <div class='brand-header'>
         <div class='brand-name'>SZEPT</div>
@@ -141,22 +150,19 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-if "step" not in st.session_state:
-    st.session_state.step = 0
-    st.session_state.answers = []
-    st.session_state.finished = False
-
 if not st.session_state.finished:
-    # Rytuał pytań
     st.write("")
     current_q = QUESTIONS[st.session_state.step]
     
     st.markdown(f"<div class='whisper-card'><p class='question-text'>{current_q}</p></div>", unsafe_allow_html=True)
     
-    ans = st.text_area("", key=f"ans_{st.session_state.step}", placeholder="Pozwól myślom płynąć...", label_visibility="collapsed")
+    # Pole tekstowe bez labela
+    ans = st.text_area("Twoja myśl", height=150, key=f"ans_{st.session_state.step}", label_visibility="collapsed")
     
-    c1, c2, c3 = st.columns([1, 1, 1])
-    with col2 := c2:
+    st.write("")
+    # Wyśrodkowany przycisk
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
         if st.button("Uwolnij szept"):
             if ans.strip():
                 st.session_state.answers.append(ans)
@@ -165,9 +171,11 @@ if not st.session_state.finished:
                 else:
                     st.session_state.finished = True
                 st.rerun()
+            else:
+                st.warning("Pozwól myślom zamienić się w słowa.")
 
 else:
-    # Ekran po analizie - AURA
+    # EKRAN ANALIZY
     with st.spinner("Architekt kalibruje Twój rezonans..."):
         time.sleep(2)
     
@@ -182,14 +190,16 @@ else:
     
     st.markdown("<p style='text-align:center; font-style:italic; color:#475569; font-size:0.8rem;'>Twoje echo zostało wysłane w przestrzeń. Nie szukaj nikogo. Pozwól rezonansowi działać.</p>", unsafe_allow_html=True)
 
-    # Sekcja "Ta rozmowa odpoczywa"
     st.write("")
-    st.markdown("---", unsafe_allow_html=True)
+    st.markdown("<hr style='border-color: #1E293B;'>", unsafe_allow_html=True)
     st.markdown("<p style='text-align:center; color:#1E293B; letter-spacing:0.2rem; font-size:0.7rem;'>SESJA ODPOCZYWA</p>", unsafe_allow_html=True)
 
-    if st.button("Powróć do rytuału"):
-        st.session_state.step = 0
-        st.session_state.answers = []
-        st.session_state.finished = False
-        st.rerun()
-        
+    st.write("")
+    c1, c2, c3 = st.columns([1, 1, 1])
+    with col2:
+        if st.button("Powróć do rytuału"):
+            st.session_state.step = 0
+            st.session_state.answers = []
+            st.session_state.finished = False
+            st.rerun()
+            
