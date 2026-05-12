@@ -1,22 +1,21 @@
 import streamlit as st
-import time
-import random
 import html
-from dataclasses import dataclass, asdict
+import random
+from dataclasses import dataclass
 from typing import List
 
 # =========================================================
-# PAGE
+# KONFIGURACJA
 # =========================================================
 
 st.set_page_config(
-    page_title="The Architect",
+    page_title="Architekt",
     page_icon="🌙",
-    layout="centered"
+    layout="wide"
 )
 
 # =========================================================
-# STYLES
+# STYLE
 # =========================================================
 
 st.markdown("""
@@ -30,253 +29,281 @@ html, body, [class*="css"] {
 
 .stApp {
     background:
-        radial-gradient(circle at top left, rgba(71,98,130,0.15), transparent 30%),
-        radial-gradient(circle at bottom right, rgba(120,120,180,0.08), transparent 35%),
+        radial-gradient(circle at top left, rgba(65,85,120,0.18), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(80,90,150,0.10), transparent 35%),
         #090D12;
-
-    color: #E8EEF5;
+    color: #E7EDF5;
 }
 
-/* Hide streamlit elements */
+#MainMenu {visibility:hidden;}
+footer {visibility:hidden;}
 
-#MainMenu {
-    visibility: hidden;
+.main-title {
+    text-align:center;
+    font-size:3.2rem;
+    font-weight:600;
+    margin-top:20px;
+    margin-bottom:8px;
 }
 
-footer {
-    visibility: hidden;
+.subtitle {
+    text-align:center;
+    color:#9AA8B5;
+    margin-bottom:35px;
+    line-height:1.8;
 }
 
-/* HEADER */
-
-.hero-title {
-    text-align: center;
-    font-size: 3rem;
-    font-weight: 600;
-    margin-top: 30px;
-    margin-bottom: 10px;
-    letter-spacing: 1px;
+.box {
+    background:linear-gradient(145deg,#121821,#0D1218);
+    border:1px solid #25303A;
+    border-radius:20px;
+    padding:24px;
+    margin-bottom:20px;
+    line-height:1.9;
 }
 
-.hero-subtitle {
-    text-align: center;
-    color: #93A4B4;
-    margin-bottom: 40px;
-    line-height: 1.8;
-}
-
-/* MESSAGE BOXES */
-
-.architect-box {
-    background: linear-gradient(145deg, #121821, #0D1218);
-    border: 1px solid #24303B;
-    border-left: 4px solid #5DA9FF;
-    padding: 24px;
-    border-radius: 18px;
-    margin-bottom: 25px;
-    line-height: 1.9;
-    animation: fadeIn 0.5s ease;
+.question-box {
+    border-left:4px solid #5EA8FF;
 }
 
 .user-box {
-    background: #0F141B;
-    border: 1px solid #222C36;
-    padding: 18px;
-    border-radius: 16px;
-    margin-top: 15px;
-    margin-bottom: 10px;
-    color: #D8E1EA;
+    background:#0F141B;
+    border:1px solid #25303A;
+    border-radius:18px;
+    padding:18px;
+    margin-top:15px;
 }
-
-/* PROFILE */
 
 .profile-box {
-    background: linear-gradient(145deg, #11161D, #0D1218);
-    border: 1px solid #26313C;
-    border-radius: 18px;
-    padding: 24px;
-    margin-top: 20px;
-    line-height: 1.9;
+    background:linear-gradient(145deg,#10161D,#0C1016);
+    border:1px solid #26313B;
+    border-left:4px solid #6EE7B7;
+    border-radius:20px;
+    padding:28px;
+    margin-top:20px;
 }
 
-/* TAGS */
+.match-box {
+    background:linear-gradient(145deg,#111821,#0D1218);
+    border:1px solid #24303A;
+    border-radius:18px;
+    padding:22px;
+    margin-bottom:18px;
+}
 
 .tag {
-    display: inline-block;
-    background: #17212C;
-    color: #8EC7FF;
-    padding: 6px 12px;
-    margin: 4px;
-    border-radius: 999px;
-    font-size: 0.8rem;
+    display:inline-block;
+    background:#17212C;
+    color:#8FC7FF;
+    padding:6px 12px;
+    border-radius:999px;
+    margin:4px;
+    font-size:0.82rem;
 }
 
-/* BUTTON */
+.soft-tag {
+    display:inline-block;
+    background:#15201B;
+    color:#7FE0B0;
+    padding:6px 12px;
+    border-radius:999px;
+    margin:4px;
+    font-size:0.82rem;
+}
+
+.stat {
+    margin-bottom:10px;
+}
 
 .stButton > button {
-    width: 100%;
-    border-radius: 14px;
-    background: linear-gradient(135deg, #4A8FE7, #2563C7);
-    color: white;
-    border: none;
-    padding: 0.9rem;
-    font-size: 1rem;
-    font-weight: 500;
-    transition: 0.3s ease;
+    width:100%;
+    border-radius:14px;
+    background:linear-gradient(135deg,#4A8FE7,#2563C7);
+    color:white;
+    border:none;
+    padding:0.9rem;
+    font-size:1rem;
+    transition:0.3s ease;
 }
 
 .stButton > button:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 8px 20px rgba(74,143,231,0.3);
+    transform:translateY(-1px);
+    box-shadow:0 8px 20px rgba(74,143,231,0.3);
 }
-
-/* TEXT AREA */
 
 textarea {
-    border-radius: 14px !important;
-    background-color: #10161D !important;
-    color: #E6EDF3 !important;
-    border: 1px solid #28313A !important;
-}
-
-/* FINAL */
-
-.final-box {
-    background: linear-gradient(145deg, #10161D, #0B1016);
-    border: 1px solid #24303B;
-    border-left: 4px solid #6EE7B7;
-    padding: 28px;
-    border-radius: 18px;
-    margin-top: 20px;
-    line-height: 1.9;
-}
-
-/* ANIMATION */
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(8px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0px);
-    }
+    border-radius:14px !important;
+    background-color:#10161D !important;
+    color:#E6EDF3 !important;
+    border:1px solid #28313A !important;
 }
 
 </style>
 """, unsafe_allow_html=True)
 
 # =========================================================
-# QUESTIONS
+# PYTANIA
 # =========================================================
 
 QUESTIONS = [
 
-    "Kiedy ostatni raz poczułeś, że naprawdę możesz być sobą przy drugim człowieku?",
+    "Kiedy ostatni raz poczułeś, że możesz być całkowicie sobą przy drugim człowieku?",
 
-    "Jak wygląda rodzaj rozmowy, którego najbardziej Ci brakuje?",
+    "Jakiego rodzaju rozmów najbardziej brakuje Ci w codziennym życiu?",
 
-    "Co męczy Cię najbardziej w dzisiejszych relacjach między ludźmi?",
+    "Co najbardziej męczy Cię w dzisiejszych relacjach między ludźmi?",
 
-    "Czy łatwo przychodzi Ci otwieranie się emocjonalnie?",
+    "Czy łatwo przychodzi Ci mówienie o emocjach?",
 
-    "Jak reagujesz, gdy ktoś naprawdę próbuje Cię zrozumieć?",
+    "Jak wygląda dla Ciebie poczucie bezpieczeństwa w relacji?",
 
+    "Jak reagujesz, gdy ktoś naprawdę próbuje Cię zrozumieć?"
 ]
 
 # =========================================================
-# ARCHETYPES
+# ARCHETYPY
 # =========================================================
 
 ARCHETYPES = {
-    "The Listener":
-        "Osoba spokojna, uważna i cierpliwa. Bardziej słucha niż mówi.",
 
-    "The Deep Diver":
-        "Silna potrzeba autentycznych i głębokich rozmów.",
+    "Nocny Myśliciel": {
+        "desc":
+            "Osoba introspektywna, analizująca emocje i relacje głębiej niż większość ludzi.",
+        "style":
+            "Powolne, refleksyjne rozmowy i emocjonalna autentyczność."
+    },
 
-    "The Quiet Mind":
-        "Introwertyczna energia, ostrożność i refleksyjność.",
+    "Ciche Serce": {
+        "desc":
+            "Wrażliwa osoba, która potrzebuje bezpieczeństwa i spokojnej obecności.",
+        "style":
+            "Delikatna komunikacja, cierpliwość i emocjonalna uważność."
+    },
 
-    "The Wanderer":
-        "Człowiek szukający swojego miejsca i emocjonalnego bezpieczeństwa.",
+    "Obserwator": {
+        "desc":
+            "Najpierw słucha i analizuje, zanim się otworzy.",
+        "style":
+            "Spokojna komunikacja i głębokie budowanie zaufania."
+    },
 
-    "The Night Thinker":
-        "Duża introspekcja, analizowanie emocji i samotne przemyślenia.",
+    "Wędrowiec": {
+        "desc":
+            "Człowiek szukający swojego miejsca i prawdziwego połączenia.",
+        "style":
+            "Poszukiwanie emocjonalnej bliskości i zrozumienia."
+    },
 
-    "The Soft Heart":
-        "Wysoka empatia i emocjonalna wrażliwość."
+    "Głębia": {
+        "desc":
+            "Silna potrzeba autentycznych i bardzo głębokich rozmów.",
+        "style":
+            "Intensywne połączenia emocjonalne i wysoka refleksyjność."
+    }
 }
 
 # =========================================================
-# PROFILE MODEL
+# DANE DEMO
+# =========================================================
+
+MATCHES = [
+
+    {
+        "name": "Alicja",
+        "age": 26,
+        "archetype": "Ciche Serce",
+        "distance": "12 km",
+        "bio":
+            "Lubi spokojne wieczory, długie rozmowy i ludzi, przy których nie trzeba nic udawać.",
+        "tags":
+            ["Spokojna energia", "Empatia", "Slow bonding"]
+    },
+
+    {
+        "name": "Maja",
+        "age": 28,
+        "archetype": "Nocny Myśliciel",
+        "distance": "31 km",
+        "bio":
+            "Najbardziej ceni szczerość, emocjonalną dojrzałość i poczucie bezpieczeństwa.",
+        "tags":
+            ["Refleksyjność", "Nocne rozmowy", "Introwertyzm"]
+    },
+
+    {
+        "name": "Natalia",
+        "age": 25,
+        "archetype": "Obserwator",
+        "distance": "18 km",
+        "bio":
+            "Nie lubi pośpiechu. Potrzebuje czasu, aby poczuć prawdziwe połączenie.",
+        "tags":
+            ["Powolne relacje", "Spokój", "Uważność"]
+    }
+]
+
+# =========================================================
+# MODEL
 # =========================================================
 
 @dataclass
-class EmotionalProfile:
+class Profile:
+
     empathy: int
     reflection: int
     vulnerability: int
+    calmness: int
     emotional_depth: int
     loneliness: int
-    calmness: int
-    authenticity: int
+
     archetype: str
-    communication_style: str
+
     tags: List[str]
 
 # =========================================================
-# ANALYZER
+# ANALIZA
 # =========================================================
 
-def analyze_user(texts: List[str]):
+def analyze_answers(answers):
 
-    combined = " ".join(texts).lower()
+    combined = " ".join(answers).lower()
 
     empathy = 0
     reflection = 0
     vulnerability = 0
+    calmness = 0
     emotional_depth = 0
     loneliness = 0
-    calmness = 0
-    authenticity = 0
 
     tags = []
 
     empathy_words = [
-        "rozumiem", "czuję", "bliskość",
-        "spokój", "empatia", "wrażliwość",
-        "zrozumienie", "emocje"
+        "rozumiem", "czuję", "empatia",
+        "bliskość", "emocje", "wrażliwość",
+        "zrozumienie", "wsparcie", "obecność"
     ]
 
     reflection_words = [
-        "zastanawiam", "analizuję",
-        "mam wrażenie", "myślę",
+        "zastanawiam", "myślę",
+        "mam wrażenie", "analizuję",
         "czasami", "od dawna"
     ]
 
     vulnerability_words = [
-        "trudno mi", "boję się",
-        "ukrywam", "samotny",
-        "nie potrafię", "wstydzę"
+        "boję się", "trudno mi",
+        "ukrywam", "nie radzę sobie",
+        "samotny", "samotna"
     ]
 
     calm_words = [
-        "cisza", "spokój",
-        "spokojnie", "harmonia",
-        "bezpieczeństwo"
+        "spokój", "cisza",
+        "bezpieczeństwo", "harmonia"
     ]
 
     loneliness_words = [
-        "sam", "samotność",
-        "pustka", "izolacja",
-        "brakuje mi"
+        "sam", "pustka",
+        "brakuje mi", "izolacja"
     ]
-
-    # =========================================
-    # ANALYSIS
-    # =========================================
 
     for word in empathy_words:
         if word in combined:
@@ -304,14 +331,13 @@ def analyze_user(texts: List[str]):
         emotional_depth += 35
 
     if word_count > 140:
-        emotional_depth += 35
-        authenticity += 25
-
-    if reflection > 30:
-        tags.append("Refleksyjność")
+        emotional_depth += 40
 
     if empathy > 20:
         tags.append("Empatia")
+
+    if reflection > 20:
+        tags.append("Refleksyjność")
 
     if vulnerability > 20:
         tags.append("Otwartość emocjonalna")
@@ -319,51 +345,29 @@ def analyze_user(texts: List[str]):
     if calmness > 20:
         tags.append("Potrzeba spokoju")
 
-    if loneliness > 20:
-        tags.append("Potrzeba bliskości")
+    if emotional_depth > 30:
+        tags.append("Głębia rozmowy")
 
-    # =========================================
-    # ARCHETYPE
-    # =========================================
+    archetype = "Wędrowiec"
 
-    archetype = "The Wanderer"
-
-    if reflection > 40 and emotional_depth > 40:
-        archetype = "The Night Thinker"
-
-    if empathy > 30:
-        archetype = "The Soft Heart"
+    if reflection > 40:
+        archetype = "Nocny Myśliciel"
 
     if calmness > 30:
-        archetype = "The Quiet Mind"
+        archetype = "Ciche Serce"
 
     if emotional_depth > 60:
-        archetype = "The Deep Diver"
+        archetype = "Głębia"
 
-    # =========================================
-    # COMMUNICATION STYLE
-    # =========================================
-
-    if emotional_depth > 60:
-        style = "Slow Deep Talk"
-
-    elif calmness > 20:
-        style = "Quiet Emotional Bonding"
-
-    else:
-        style = "Reflective Communication"
-
-    return EmotionalProfile(
-        empathy=empathy,
-        reflection=reflection,
-        vulnerability=vulnerability,
-        emotional_depth=emotional_depth,
-        loneliness=loneliness,
-        calmness=calmness,
-        authenticity=authenticity,
-        archetype=archetype,
-        communication_style=style,
-        tags=tags
+    return Profile(
+        empathy,
+        reflection,
+        vulnerability,
+        calmness,
+        emotional_depth,
+        loneliness,
+        archetype,
+        tags
     )
 
 # =========================================================
@@ -380,48 +384,35 @@ if "step" not in st.session_state:
 # =========================================================
 
 st.markdown(
-    "<div class='hero-title'>🌙 THE ARCHITECT</div>",
+    "<div class='main-title'>🌙 THE ARCHITECT</div>",
     unsafe_allow_html=True
 )
 
 st.markdown(
     """
-    <div class='hero-subtitle'>
-    A calm space for authentic conversations.<br>
-    No swipes. No pressure. No performance.
+    <div class='subtitle'>
+    Przestrzeń dla spokojnych, autentycznych rozmów.<br>
+    Bez swipe'ów. Bez presji. Bez udawania.
     </div>
     """,
     unsafe_allow_html=True
 )
 
 # =========================================================
-# HISTORY
-# =========================================================
-
-for answer in st.session_state.answers:
-
-    safe_text = html.escape(answer)
-
-    st.markdown(
-        f"""
-        <div class='user-box'>
-        {safe_text}
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-# =========================================================
-# QUESTIONS FLOW
+# FLOW
 # =========================================================
 
 if not st.session_state.finished:
+
+    progress = st.session_state.step / len(QUESTIONS)
+
+    st.progress(progress)
 
     current_question = QUESTIONS[st.session_state.step]
 
     st.markdown(
         f"""
-        <div class='architect-box'>
+        <div class='box question-box'>
         {current_question}
         </div>
         """,
@@ -429,25 +420,21 @@ if not st.session_state.finished:
     )
 
     user_input = st.text_area(
-        "Your response",
-        height=140,
-        placeholder="Write slowly. There is no rush here.",
+        "Twoja odpowiedź",
+        height=160,
+        placeholder="Nie musisz się spieszyć.",
         key=f"question_{st.session_state.step}"
     )
 
     col1, col2 = st.columns(2)
 
     with col1:
-        send = st.button("Continue")
+        next_btn = st.button("Kontynuuj")
 
     with col2:
-        reset = st.button("Reset")
+        reset_btn = st.button("Reset")
 
-    # =========================================
-    # RESET
-    # =========================================
-
-    if reset:
+    if reset_btn:
 
         st.session_state.step = 0
         st.session_state.answers = []
@@ -455,88 +442,188 @@ if not st.session_state.finished:
 
         st.rerun()
 
-    # =========================================
-    # CONTINUE
-    # =========================================
-
-    if send:
+    if next_btn:
 
         if not user_input.strip():
-            st.warning("Your response is empty.")
+            st.warning("Wpisz odpowiedź.")
             st.stop()
 
         st.session_state.answers.append(user_input)
 
         if st.session_state.step < len(QUESTIONS) - 1:
             st.session_state.step += 1
-
         else:
             st.session_state.finished = True
 
         st.rerun()
 
 # =========================================================
-# FINAL PROFILE
+# ETAP PO ANALIZIE
 # =========================================================
 
 else:
 
-    profile = analyze_user(
+    profile = analyze_answers(
         st.session_state.answers
     )
 
-    tags_html = "".join(
-        f"<span class='tag'>{tag}</span>"
-        for tag in profile.tags
-    )
+    left, right = st.columns([1.1, 1])
 
-    st.markdown(
-        f"""
-        <div class='final-box'>
+    # =====================================================
+    # PROFIL EMOCJONALNY
+    # =====================================================
 
-        <h2>{profile.archetype}</h2>
+    with left:
 
-        <i>{ARCHETYPES[profile.archetype]}</i>
+        tags_html = "".join(
+            f"<span class='tag'>{tag}</span>"
+            for tag in profile.tags
+        )
 
-        <hr>
+        st.markdown(
+            f"""
+            <div class='profile-box'>
 
-        <b>Communication Style:</b><br>
-        {profile.communication_style}
+            <h2>{profile.archetype}</h2>
 
-        <br><br>
+            <i>{ARCHETYPES[profile.archetype]["desc"]}</i>
 
-        <b>Detected emotional patterns:</b><br><br>
+            <hr>
 
-        • Empathy: {profile.empathy}<br>
-        • Reflection: {profile.reflection}<br>
-        • Vulnerability: {profile.vulnerability}<br>
-        • Emotional Depth: {profile.emotional_depth}<br>
-        • Need for Closeness: {profile.loneliness}<br>
-        • Calmness Orientation: {profile.calmness}<br>
+            <b>Styl komunikacji:</b><br>
+            {ARCHETYPES[profile.archetype]["style"]}
 
-        <br>
+            <br><br>
 
-        {tags_html}
+            <div class='stat'>
+            Empatia • {profile.empathy}
+            </div>
 
-        <hr>
+            <div class='stat'>
+            Refleksyjność • {profile.reflection}
+            </div>
 
-        The system detected a communication style
-        focused on emotional authenticity,
-        calm interaction
-        and deeper conversational bonding.
+            <div class='stat'>
+            Otwartość emocjonalna • {profile.vulnerability}
+            </div>
 
-        Potential matches will prioritize:
-        emotional safety,
-        patience,
-        reflective communication
-        and low-pressure interaction.
+            <div class='stat'>
+            Potrzeba spokoju • {profile.calmness}
+            </div>
+
+            <div class='stat'>
+            Głębia emocjonalna • {profile.emotional_depth}
+            </div>
+
+            <div class='stat'>
+            Potrzeba bliskości • {profile.loneliness}
+            </div>
+
+            <br>
+
+            {tags_html}
+
+            <hr>
+
+            System wykrył zwiększoną potrzebę
+            autentycznej komunikacji,
+            spokojnych relacji
+            oraz emocjonalnego bezpieczeństwa.
+
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    # =====================================================
+    # MATCHING
+    # =====================================================
+
+    with right:
+
+        st.markdown("""
+        <div class='box'>
+        <h3>Potencjalne połączenia</h3>
+
+        System nie dopasowuje ludzi na podstawie zdjęć,
+        lecz stylu komunikacji i emocjonalnego rezonansu.
+        </div>
+        """, unsafe_allow_html=True)
+
+        for match in MATCHES:
+
+            tags = "".join(
+                f"<span class='soft-tag'>{tag}</span>"
+                for tag in match["tags"]
+            )
+
+            st.markdown(
+                f"""
+                <div class='match-box'>
+
+                <h4>{match["name"]}, {match["age"]}</h4>
+
+                <b>Archetyp:</b> {match["archetype"]}<br>
+                <b>Odległość:</b> {match["distance"]}
+
+                <br><br>
+
+                {match["bio"]}
+
+                <br><br>
+
+                {tags}
+
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        st.button("Rozpocznij spokojną rozmowę")
+
+    # =====================================================
+    # DODATKOWE TRYBY
+    # =====================================================
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    mode1, mode2, mode3 = st.columns(3)
+
+    with mode1:
+
+        st.markdown("""
+        <div class='box'>
+
+        <h4>🌙 Nocne rozmowy</h4>
+
+        Połączenia aktywne po 22:00.
+        Więcej refleksyjnych i spokojnych osób.
 
         </div>
-        """,
-        unsafe_allow_html=True
-    )
+        """, unsafe_allow_html=True)
 
-    st.info(
-        "No profile photos are shown yet. "
-        "Connection begins through conversation."
-    )
+    with mode2:
+
+        st.markdown("""
+        <div class='box'>
+
+        <h4>☁️ Slow bonding</h4>
+
+        Brak zdjęć przez pierwsze 24h rozmowy.
+        Najpierw komunikacja.
+
+        </div>
+        """, unsafe_allow_html=True)
+
+    with mode3:
+
+        st.markdown("""
+        <div class='box'>
+
+        <h4>🎧 Voice atmosphere</h4>
+
+        Delikatne ambientowe pokoje głosowe.
+        Bez kamer. Bez presji.
+
+        </div>
+        """, unsafe_allow_html=True)
