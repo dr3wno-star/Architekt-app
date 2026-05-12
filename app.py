@@ -3,7 +3,7 @@ import google.generativeai as genai
 import time
 
 # 1. Konfiguracja "Mózgu"
-genai.configure(api_key="AIzaSyAfQSEHY5B4BVvMADrMRozwp8zdrO9nRu4")
+genai.configure(api_key="AIzaSyBl0o-YNjRcjGeu3E362FRtPFkVIaSesjs")
 
 # Instrukcja systemowa - definiuje charakter bota
 SYSTEM_PROMPT = """
