@@ -1,87 +1,117 @@
 import streamlit as st
-import google.generativeai as genai
 import time
 
-# --- 1. KONFIGURACJA ---
-API_KEY = "AIzaSyD4MzVof1TNHPmuqFokYoKCCupbdKhYfO0"
-genai.configure(api_key=API_KEY)
-
-st.set_page_config(page_title="The Architect", page_icon="🏛️", layout="centered")
+# --- 1. KONFIGURACJA WIZUALNA ---
+st.set_page_config(page_title="The Architect - Core", page_icon="🏛️")
 
 st.markdown("""
     <style>
     .stApp { background-color: #0E1117; color: #FFFFFF; }
-    .stChatMessage { border-radius: 15px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.1); }
-    .report-box { background-color: #1A1A1B; border: 1px solid #C5A059; padding: 15px; border-radius: 10px; color: #C5A059; font-size: 0.85rem; font-family: monospace; }
+    .report-box { 
+        background-color: #1A1A1B; border: 1px solid #C5A059; 
+        padding: 15px; border-radius: 10px; color: #C5A059; 
+        font-family: monospace; font-size: 0.9rem;
+    }
+    .user-bubble { background-color: #262730; padding: 10px; border-radius: 10px; margin: 5px 0; }
+    .arch-bubble { background-color: #1A1A1B; border-left: 3px solid #C5A059; padding: 10px; border-radius: 10px; margin: 5px 0; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. INTELIGENTNE WYKRYWANIE MODELU ---
-@st.cache_resource
-def find_working_model():
-    try:
-        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        if available_models:
-            # Szukamy flash, potem pro, a jak nie ma to bierzemy pierwszy z brzegu
-            for name in available_models:
-                if '1.5-flash' in name: return name
-            for name in available_models:
-                if 'pro' in name: return name
-            return available_models[0]
-    except Exception as e:
-        st.error(f"Nie udało się pobrać listy modeli: {str(e)}")
-    return None
+# --- 2. LOGIKA SCENARIUSZA (Pytania Architekta) ---
+SCENARIO = [
+    "Witaj. Zanim przejdziemy dalej, powiedz: co sprawia, że Twoje życie jest ciekawsze od 99% innych ludzi?",
+    "Interesujące. A jak reagujesz, gdy ktoś podważa Twoje kompetencje w tym, co robisz najlepiej?",
+    "Rozumiem. Ostatnie pytanie: czego szukasz w drugim człowieku – lustra czy dopełnienia?",
+    "Analiza zakończona. Wyniki zostały przesłane do administratora systemu."
+]
 
-WORKING_MODEL = find_working_model()
+# --- 3. SILNIK ANALIZY ---
+def analyze_input(text, response_time):
+    score = 0
+    traits = []
+    
+    # 1. Analiza długości (Elokwencja)
+    word_count = len(text.split())
+    if word_count > 20:
+        score += 30
+        traits.append("Wysoka Elokwencja")
+    elif word_count < 5:
+        score -= 10
+        traits.append("Lakoniczność / Brak zaangażowania")
+    
+    # 2. Analiza słów kluczowych (Wartości)
+    keywords = {
+        "pasja": "Pasjonat", "pieniądze": "Materialista", "sukces": "Ambitny",
+        "spokój": "Stabilny", "ludzie": "Empatyczny", "ja": "Egocentryk",
+        "nauka": "Intelektualista", "walka": "Zdeterminowany"
+    }
+    for word, trait in keywords.items():
+        if word in text.lower():
+            score += 10
+            traits.append(trait)
 
-# --- 3. SYSTEM PROMPT ---
-SYSTEM_PROMPT = """Jesteś 'Architektem'. Rozmawiaj jak normalny, konkretny człowiek. 
-Po znaku '###' napisz krótką analizę psychologiczną rozmówcy dla Konrada."""
+    # 3. Analiza czasu namysłu
+    if response_time < 2:
+        traits.append("Impulsywność")
+    elif response_time > 10:
+        traits.append("Refleksyjność / Ostrożność")
 
-# --- 4. INTERFEJS ---
+    return score, traits
+
+# --- 4. INTERFEJS CZATU ---
 st.title("🏛️ THE ARCHITECT")
+st.caption("Behavioral Analysis Engine v1.0 (No-API Build)")
 
-if not WORKING_MODEL:
-    st.error("Klucz API nie ma dostępu do żadnych modeli. Sprawdź status klucza w Google AI Studio.")
-    st.stop()
+if "step" not in st.session_state:
+    st.session_state.step = 0
+    st.session_state.chat_history = []
+    st.session_state.start_time = time.time()
+    st.session_state.analysis_log = []
 
-if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "System gotowy. O czym pogadamy?"}]
+# Wyświetlanie historii
+for chat in st.session_state.chat_history:
+    st.markdown(f"<div class='{chat['class']}'>{chat['content']}</div>", unsafe_allow_html=True)
+    if 'report' in chat:
+        with st.expander("👁️ LOG ANALITYCZNY (Tylko dla Konrada)"):
+            st.markdown(f"<div class='report-box'>{chat['report']}</div>", unsafe_allow_html=True)
 
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        content = message["content"]
-        if "###" in content:
-            msg, report = content.split("###")
-            st.write(msg.strip())
-            with st.expander("👁️ RAPORT"):
-                st.markdown(f"<div class='report-box'>{report.strip()}</div>", unsafe_allow_html=True)
-        else:
-            st.write(content)
-
-if user_input := st.chat_input("Napisz..."):
-    st.session_state.messages.append({"role": "user", "content": user_input})
-    with st.chat_message("user"):
-        st.write(user_input)
-
-    with st.chat_message("assistant"):
-        try:
-            model = genai.GenerativeModel(WORKING_MODEL)
-            history = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages[-3:]])
-            full_query = f"{SYSTEM_PROMPT}\n\nHistoria:\n{history}\n\nUżytkownik: {user_input}\nArchitekt:"
-            
-            response = model.generate_content(full_query)
-            res_full = response.text
-            
-            if "###" in res_full:
-                u_text, r_text = res_full.split("###")
-                st.write(u_text.strip())
-                with st.expander("👁️ RAPORT"):
-                    st.markdown(f"<div class='report-box'>{r_text.strip()}</div>", unsafe_allow_html=True)
-            else:
-                st.write(res_full)
-            st.session_state.messages.append({"role": "assistant", "content": res_full})
-            
-        except Exception as e:
-            st.error(f"Błąd przy modelu {WORKING_MODEL}: {str(e)}")
-            
+# Główne pytanie Architekta
+if st.session_state.step < len(SCENARIO):
+    current_question = SCENARIO[st.session_state.step]
+    st.markdown(f"<div class='arch-bubble'><b>Architekt:</b> {current_question}</div>", unsafe_allow_html=True)
+    
+    if st.session_state.step < len(SCENARIO) - 1:
+        user_input = st.text_input("Twoja odpowiedź...", key=f"input_{st.session_state.step}")
+        
+        if st.button("Wyślij", key=f"btn_{st.session_state.step}"):
+            if user_input:
+                # Obliczanie czasu i analiza
+                end_time = time.time()
+                resp_time = end_time - st.session_state.start_time
+                score, traits = analyze_input(user_input, resp_time)
+                
+                report = f"""
+                <b>PARAMETRY:</b><br>
+                - Czas namysłu: {resp_time:.2f}s<br>
+                - Słów: {len(user_input.split())}<br>
+                - Wynik Selekcji: {score} pkt<br>
+                - Wykryte cechy: {', '.join(traits)}
+                """
+                
+                # Zapis do historii
+                st.session_state.chat_history.append({
+                    "class": "user-bubble", 
+                    "content": f"<b>Ty:</b> {user_input}",
+                    "report": report
+                })
+                
+                st.session_state.step += 1
+                st.session_state.start_time = time.time()
+                st.rerun()
+else:
+    st.success("Test zakończony. Architekt wyda werdykt wkrótce.")
+    if st.button("Zacznij od nowa"):
+        st.session_state.step = 0
+        st.session_state.chat_history = []
+        st.rerun()
+        
