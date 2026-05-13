@@ -83,6 +83,14 @@ html, body, [class*="css"] {
     letter-spacing: 0.15rem;
 }
 
+.progress {
+    text-align: center;
+    color: #334155;
+    margin-bottom: 15px;
+    letter-spacing: 0.2rem;
+    font-size: 0.7rem;
+}
+
 .question-card {
     padding: 45px;
     border: 1px solid rgba(255,255,255,0.05);
@@ -98,14 +106,6 @@ html, body, [class*="css"] {
     text-align: center;
     color: #CBD5E1;
     font-weight: 300;
-}
-
-.progress {
-    text-align: center;
-    color: #334155;
-    margin-bottom: 15px;
-    letter-spacing: 0.2rem;
-    font-size: 0.7rem;
 }
 
 textarea {
@@ -324,9 +324,6 @@ if "finished" not in st.session_state:
 if "questions" not in st.session_state:
     st.session_state.questions = random.sample(QUESTION_BANK, 3)
 
-if "current_answer" not in st.session_state:
-    st.session_state.current_answer = ""
-
 # =========================================================
 # AI ANALIZA
 # =========================================================
@@ -416,27 +413,29 @@ if not st.session_state.finished:
     </div>
     """, unsafe_allow_html=True)
 
-    answer = st.text_area(
-        "",
-        height=160,
-        placeholder="Pozwól myśli wybrzmieć...",
-        key="current_answer"
-    )
+    with st.form("whisper_form", clear_on_submit=True):
 
-    c1, c2, c3 = st.columns([1,1,1])
+        answer = st.text_area(
+            "",
+            height=160,
+            placeholder="Pozwól myśli wybrzmieć..."
+        )
 
-    with c2:
+        c1, c2, c3 = st.columns([1,1,1])
 
-        if st.button("UWOLNIJ SZEPT"):
+        with c2:
+
+            submitted = st.form_submit_button("UWOLNIJ SZEPT")
+
+        if submitted:
 
             if answer.strip():
 
                 st.session_state.answers.append(answer)
 
-                st.session_state.current_answer = ""
-
                 if st.session_state.step < 2:
                     st.session_state.step += 1
+
                 else:
                     st.session_state.finished = True
 
