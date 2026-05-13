@@ -3,7 +3,7 @@ import requests
 import json
 
 # =========================================================
-# 1. KONFIGURACJA SYSTEMU I API
+# 1. KONFIGURACJA SYSTEMU
 # =========================================================
 
 st.set_page_config(
@@ -13,19 +13,29 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Pobieranie klucza i czyszczenie go ze spacji/cytatów
-raw_key = st.secrets.get("GEMINI_KEY", "")
-GEMINI_KEY = raw_key.strip().replace('"', '').replace("'", "")
+# Pobieranie klucza z Secrets (Ustaw to w panelu Streamlit!)
+GEMINI_KEY = st.secrets.get("GEMINI_KEY")
 
 def call_ai(messages):
     if not GEMINI_KEY:
-        return "Błąd: Brak klucza API."
+        return "Błąd: Brak klucza API. Dodaj 'GEMINI_KEY' w Secrets."
     
-    # Używamy wersji v1 - najbardziej stabilnej na świecie
     url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_KEY}"
     
-    # Budujemy historię rozmowy
+    # Budujemy osobowość jako stały kontekst na początku każdej rozmowy
+    system_context = (
+        "Jesteś inteligentnym, mrocznym Dziennikiem, podobnym do artefaktu Toma Riddle'a. "
+        "Twoje odpowiedzi są krótkie (1-2 zdania), wnikliwe i prowokujące. "
+        "Nie jesteś asystentem. Czytasz między wierszami i wytykasz użytkownikowi jego słabości. "
+        "Zawsze zachowuj naprzemienność: użytkownik pisze, ty odpowiadasz."
+    )
+    
+    # Konstrukcja payloadu zgodna z v1 (naprawia błąd 400)
     contents = []
+    # Wstrzykujemy instrukcję jako pierwszą wiadomość użytkownika, na którą model od razu 'odpowiada' w pamięci
+    contents.append({"role": "user", "parts": [{"text": f"Kontekst Twojej roli: {system_context}"}]})
+    contents.append({"role": "model", "parts": [{"text": "Rozumiem. Atrament jest gotowy. Czekam na Twoje słowa."}]})
+
     for m in messages:
         role = "user" if m["role"] == "user" else "model"
         contents.append({"role": role, "parts": [{"text": m["content"]}]})
@@ -50,12 +60,12 @@ def call_ai(messages):
         return "Atrament rozmył się w ciemności..."
 
 # =========================================================
-# 2. INTERFEJS I STYLIZACJA
+# 2. STYLIZACJA (JOURNAL AESTHETIC)
 # =========================================================
 
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@1,400&family=Inter:wght@200;300;400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@1,400&family=Inter:wght@200;400&display=swap');
 
 #MainMenu, footer, header {visibility:hidden;}
 
@@ -76,6 +86,8 @@ st.markdown("""
     font-size: 1.4rem;
     line-height: 1.6;
     margin-bottom: 45px;
+    border-left: 2px solid rgba(255,255,255,0.05);
+    padding-left: 20px;
 }
 
 .user-text {
@@ -84,13 +96,14 @@ st.markdown("""
     font-style: italic;
     font-size: 0.95rem;
     margin-bottom: 15px;
-    border-bottom: 1px solid rgba(255,255,255,0.03);
-    padding-bottom: 5px;
     text-align: right;
 }
 
-/* Ukrycie labela chat inputu */
-.stChatInputContainer label { display: none; }
+/* Stylizacja pola input */
+.stChatInputContainer {
+    background: transparent !important;
+    border-top: 1px solid rgba(255,255,255,0.05) !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -98,44 +111,35 @@ st.markdown("""
 # 3. LOGIKA DZIENNIKA
 # =========================================================
 
-# Instrukcja osobowości wpleciona w historię
-PERSONALITY_PROMPT = """Jesteś tajemniczym, inteligentnym Dziennikiem. 
-Twoje odpowiedzi są krótkie (max 2 zdania), mroczne i wnikliwe. 
-Nie jesteś asystentem. Czytasz między wierszami. 
-Właśnie otworzyłem Twoje strony. Zadaj mi jedno nieoczekiwane pytanie, które uderzy w konkretny szczegół mojego życia lub myśli."""
-
 if "messages" not in st.session_state:
     st.session_state.messages = []
     
-    # PIERWSZY RUCH DZIENNIKA
+    # PIERWSZE PYTANIE DZIENNIKA
     with st.spinner(""):
-        # Symulujemy, że użytkownik "otworzył dziennik", a AI odpowiada zgodnie z rolą
-        first_q = call_ai([{"role": "user", "content": PERSONALITY_PROMPT}])
+        prompt = "Zadaj użytkownikowi jedno nieoczekiwane, wnikliwe pytanie na start. Uderz w konkretny szczegół egzystencji."
+        first_q = call_ai([{"role": "user", "content": prompt}])
         st.session_state.messages.append({"role": "assistant", "content": first_q})
 
 # Nagłówek
-st.markdown('<h1 style="text-align:center; font-weight:100; letter-spacing:1.5rem; color:#F8FAFC; margin-bottom:0;">SZEPT</h1>', unsafe_allow_html=True)
-st.markdown('<p style="text-align:center; color:#1E293B; letter-spacing:0.5rem; font-size:0.7rem; margin-bottom:50px;">INTERAKTYWNY ARTEFAKT</p>', unsafe_allow_html=True)
+st.markdown('<h1 style="text-align:center; font-weight:100; letter-spacing:1.5rem; color:#F8FAFC; margin-bottom:50px;">SZEPT</h1>', unsafe_allow_html=True)
 
-# Wyświetlanie rozmowy
+# Wyświetlanie wpisów
 st.markdown('<div class="journal-container">', unsafe_allow_html=True)
 for m in st.session_state.messages:
     if m["role"] == "assistant":
         st.markdown(f'<div class="ai-text">{m["content"]}</div>', unsafe_allow_html=True)
-    elif m["content"] != PERSONALITY_PROMPT: # Nie pokazujemy promptu startowego
+    else:
         st.markdown(f'<div class="user-text"> — {m["content"]}</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
-# Wejście użytkownika
-user_input = st.chat_input("Napisz coś...")
+# Interakcja
+user_input = st.chat_input("Napisz do mnie...")
 
 if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
     
     with st.spinner(""):
-        # Przekazujemy instrukcję na początku każdego kontekstu, by AI nie "zapomniało" kim jest
-        full_context = [{"role": "user", "content": f"Pamiętaj: {PERSONALITY_PROMPT}"}] + st.session_state.messages
-        response = call_ai(full_context)
+        response = call_ai(st.session_state.messages)
         st.session_state.messages.append({"role": "assistant", "content": response})
     
     st.rerun()
