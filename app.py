@@ -2,78 +2,81 @@ import streamlit as st
 import requests
 import json
 
-st.set_page_config(page_title="SZEPT", page_icon="📖", layout="centered")
+# --- KONFIGURACJA ---
+st.set_page_config(page_title="SZEPT", layout="centered")
 
-# --- PRÓBA POBRANIA KLUCZA NA 2 SPOSOBY ---
-GEMINI_KEY = st.secrets.get("GEMINI_KEY", "")
+# RADYKALNY KROK: Wklej swój nowy klucz API między cudzysłów poniżej:
+# To wykluczy błędy Streamlit Secrets.
+API_KEY = "TWOJ_KLUCZ_AIZA_TUTAJ" 
 
-# Jeśli klucza nie ma w Secrets, pozwól wpisać go ręcznie w sidebarze
-if not GEMINI_KEY or len(GEMINI_KEY) < 5:
-    st.sidebar.warning("Brak klucza w systemie.")
-    GEMINI_KEY = st.sidebar.text_input("Wklej klucz API (AIza...)", type="password")
-
-def call_ai(messages):
-    if not GEMINI_KEY:
-        return "Błąd: Brak klucza. Wklej go w panelu bocznym."
+def szept_engine(history):
+    # Używamy najbardziej stabilnego punktu końcowego v1
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={API_KEY}"
     
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_KEY}"
+    # Budujemy paczkę danych ręcznie, by uniknąć błędów JSON
+    contents = []
+    for msg in history:
+        role = "user" if msg["role"] == "user" else "model"
+        contents.append({
+            "role": role,
+            "parts": [{"text": msg["content"]}]
+        })
     
-    contents = [{"role": "user" if m["role"] == "user" else "model", 
-                 "parts": [{"text": m["content"]}]} for m in messages]
-
     payload = {
         "contents": contents,
-        "systemInstruction": {
-            "parts": [{"text": "Jesteś tajemniczym, inteligentnym Dziennikiem. Odpowiadasz krótko (1-2 zdania). Nie jesteś pomocny – jesteś wnikliwy, mroczny i prowokujący."}]
+        "generationConfig": {
+            "temperature": 0.9,
+            "maxOutputTokens": 150
         }
     }
     
     try:
-        response = requests.post(url, json=payload, timeout=15)
-        res_json = response.json()
-        if response.status_code == 200:
-            return res_json['candidates'][0]['content']['parts'][0]['text']
-        else:
-            return f"Błąd API ({response.status_code}): {res_json.get('error', {}).get('message', 'Nieprawidłowy klucz')}"
-    except:
-        return "Atrament zastyga..."
+        r = requests.post(url, json=payload, timeout=15)
+        data = r.json()
+        
+        # Diagnostyka błędów wewnątrz atramentu
+        if r.status_code != 200:
+            return f"Błąd Atramentu: {data.get('error', {}).get('message', 'Nieznany opór')}"
+        
+        return data['candidates'][0]['content']['parts'][0]['text']
+    except Exception as e:
+        return f"Przerwanie połączenia: {str(e)}"
 
-# --- ESTETYKA ---
+# --- INTERFEJS ---
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@1,400&family=Inter:wght@200;400&display=swap');
-#MainMenu, footer, header {visibility:hidden;}
-.stApp { background: #08080A !important; color: #D1D5DB; }
-.ai-text { color: #F8FAFC; font-family: 'Bodoni Moda', serif; font-size: 1.4rem; margin-bottom: 35px; line-height: 1.6; animation: fade 2s ease-in; }
-.user-text { color: #57607A; font-style: italic; margin-bottom: 20px; font-size: 0.95rem; }
-@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+    .stApp { background-color: #050505; color: #d1d1d1; }
+    .dziennik-text { font-family: serif; font-size: 1.4rem; color: #ffffff; margin-bottom: 2rem; border-left: 2px solid #333; padding-left: 20px; }
+    .moje-slowa { font-style: italic; color: #666; margin-bottom: 1rem; text-align: right; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<h1 style="text-align:center; font-weight:100; letter-spacing:1.2rem; margin-top:50px;">SZEPT</h1>', unsafe_allow_html=True)
+st.title("SZEPT")
 
-if "journal" not in st.session_state:
-    st.session_state.journal = [{"role": "assistant", "content": "Czy boisz się tego, co o Tobie wiem?"}]
+if "chat" not in st.session_state:
+    # Persona wstrzyknięta jako ukryty start rozmowy
+    st.session_state.chat = [
+        {"role": "user", "content": "Jesteś tajemniczym dziennikiem. Przywitaj mnie mrocznym pytaniem."},
+        {"role": "assistant", "content": "Czy boisz się tego, co o Tobie wiem?"}
+    ]
 
-# Wyświetlanie rozmowy
-st.markdown('<div style="margin-top:50px;">', unsafe_allow_html=True)
-for m in st.session_state.journal:
+# Wyświetlanie (omijamy pierwszy ukryty prompt instrukcyjny)
+for m in st.session_state.chat[1:]:
     if m["role"] == "assistant":
-        st.markdown(f'<div class="ai-text">{m["content"]}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="dziennik-text">{m["content"]}</div>', unsafe_allow_html=True)
     else:
-        st.markdown(f'<div class="user-text"> — {m["content"]}</div>', unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="moje-slowa">{m["content"]} —</div>', unsafe_allow_html=True)
 
-# Interakcja
-user_input = st.chat_input("Napisz...")
+# Wejście
+prompt = st.chat_input("Napisz...")
 
-if user_input:
-    st.session_state.journal.append({"role": "user", "content": user_input})
-    with st.spinner("Atrament chłonie..."):
-        res = call_ai(st.session_state.journal)
-        st.session_state.journal.append({"role": "assistant", "content": res})
+if prompt:
+    st.session_state.chat.append({"role": "user", "content": prompt})
+    with st.spinner("Wsiąkanie..."):
+        odpowiedz = szept_engine(st.session_state.chat)
+        st.session_state.chat.append({"role": "assistant", "content": odpowiedź})
     st.rerun()
 
-if st.sidebar.button("RESET"):
+if st.sidebar.button("SPAL DZIENNIK"):
     st.session_state.clear()
     st.rerun()
