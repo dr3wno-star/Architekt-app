@@ -160,7 +160,6 @@ textarea:focus {
     font-family: 'Bodoni Moda', serif;
     line-height: 1.2;
     letter-spacing: 0.08rem;
-    animation: slowAppear 2s ease;
 }
 
 .aura-desc {
@@ -168,10 +167,9 @@ textarea:focus {
     color: #94A3B8;
     line-height: 2rem;
     font-size: 1.05rem;
-    max-width: 500px;
+    max-width: 520px;
     margin-left: auto;
     margin-right: auto;
-    animation: slowAppear 3s ease;
 }
 
 .traits {
@@ -186,7 +184,6 @@ textarea:focus {
     color: #94A3B8;
     font-size: 0.85rem;
     letter-spacing: 0.05rem;
-    animation: slowAppear 3.5s ease;
 }
 
 .level {
@@ -195,7 +192,6 @@ textarea:focus {
     letter-spacing: 0.2rem;
     font-size: 0.75rem;
     line-height: 1.9;
-    animation: slowAppear 4s ease;
 }
 
 .divider {
@@ -234,75 +230,105 @@ textarea:focus {
 """, unsafe_allow_html=True)
 
 # =========================================================
-# PYTANIA
+# PIERWSZE PYTANIA KOMPASOWE
 # =========================================================
 
-QUESTION_BANK = [
+FIRST_QUESTIONS = [
 
-    "Za czym tęskni Twoja głowa, kiedy robi się całkiem cicho?",
+    "Z czym przychodzisz dziś do tej przestrzeni?",
 
-    "Czego najbardziej boisz się w kontakcie z nową osobą?",
+    "Co dziś najbardziej zajmowało Twoją głowę?",
 
-    "Jak wygląda miejsce, w którym naprawdę odpoczywasz?",
+    "Jak wyglądał Twój dzień od środka?",
 
-    "Która emocja wraca do Ciebie najczęściej nocą?",
+    "Jakiej energii najbardziej Ci dziś brakuje?",
 
-    "Co ukrywasz pod spokojem?",
-
-    "Jakiej obecności najbardziej brakuje Ci w życiu?",
-
-    "Co chciałbyś usłyszeć od drugiego człowieka?",
-
-    "Kiedy ostatni raz poczułeś prawdziwe zrozumienie?",
-
-    "Jakiej ciszy potrzebujesz najbardziej?",
-
-    "Co męczy Cię w relacjach z ludźmi?",
-
-    "Jak wygląda Twoje emocjonalne schronienie?",
-
-    "Jaką część siebie pokazujesz najrzadziej?"
+    "Co dziś najmocniej zostało z Tobą po całym dniu?"
 ]
 
 # =========================================================
-# FALLBACK AUR
+# SCENARIUSZE
+# =========================================================
+
+SCENARIOS = {
+
+    "spokój": [
+
+        "Co pomaga Ci naprawdę zwolnić?",
+
+        "W jakim miejscu czujesz największy wewnętrzny oddech?"
+    ],
+
+    "ciekawość": [
+
+        "Jakiej rozmowy chciałbyś dziś doświadczyć?",
+
+        "Co ostatnio najbardziej Cię zaintrygowało?"
+    ],
+
+    "zmęczenie": [
+
+        "Co najbardziej odbiera Ci energię?",
+
+        "Jak wyglądałby Twój idealny moment wyciszenia?"
+    ],
+
+    "kontakt": [
+
+        "Jakiej obecności najbardziej Ci dziś brakuje?",
+
+        "Co sprawia, że czujesz prawdziwe połączenie z drugim człowiekiem?"
+    ],
+
+    "introspekcja": [
+
+        "Jaką część siebie pokazujesz najrzadziej?",
+
+        "Która myśl wraca do Ciebie najczęściej w ciszy?"
+    ],
+
+    "lekkość": [
+
+        "Co ostatnio wywołało u Ciebie autentyczny uśmiech?",
+
+        "Jak wygląda moment, w którym czujesz pełną swobodę?"
+    ],
+
+    "chaos": [
+
+        "Co dziś było w Tobie najbardziej niespokojne?",
+
+        "Za czym najbardziej tęskni Twoja głowa, gdy wszystko cichnie?"
+    ]
+}
+
+# =========================================================
+# FALLBACK AURY
 # =========================================================
 
 FALLBACK_AURAS = [
 
     {
-        "aura": "Cichy Ogień",
-        "description": "Ukrywasz intensywność pod spokojną powierzchnią.",
-        "traits": [
-            "introspekcja",
-            "ostrożność",
-            "głębia"
-        ],
-        "next_path": "nocna rozmowa",
+        "aura": "Spokojne Echo",
+        "description": "Wnosisz do przestrzeni miękką uważność.",
+        "traits": ["spokój", "obserwacja", "autentyczność"],
+        "next_path": "cicha rozmowa",
         "whisper_level": 2
     },
 
     {
-        "aura": "Nocne Echo",
-        "description": "Twoje emocje długo rezonują w ciszy.",
-        "traits": [
-            "melancholia",
-            "uważność",
-            "delikatność"
-        ],
-        "next_path": "archiwum ciszy",
+        "aura": "Świetliste Tło",
+        "description": "Twoja energia pozostawia po sobie delikatny ślad.",
+        "traits": ["lekkość", "obecność", "ciekawość"],
+        "next_path": "nocne echo",
         "whisper_level": 3
     },
 
     {
-        "aura": "Miękki Mrok",
-        "description": "Chronisz swoją wrażliwość przed hałasem świata.",
-        "traits": [
-            "spokój",
-            "samotność",
-            "obserwacja"
-        ],
-        "next_path": "głębokie echo",
+        "aura": "Głębokie Echo",
+        "description": "Myślisz głębiej niż pokazujesz światu.",
+        "traits": ["introspekcja", "emocjonalność", "uważność"],
+        "next_path": "rytuał ciszy",
         "whisper_level": 4
     }
 
@@ -321,22 +347,72 @@ if "answers" not in st.session_state:
 if "finished" not in st.session_state:
     st.session_state.finished = False
 
+if "scenario" not in st.session_state:
+    st.session_state.scenario = None
+
 if "questions" not in st.session_state:
-    st.session_state.questions = random.sample(QUESTION_BANK, 3)
+
+    first_question = random.choice(FIRST_QUESTIONS)
+
+    st.session_state.questions = [first_question]
 
 # =========================================================
-# AI ANALIZA
+# AI WYBÓR SCENARIUSZA
 # =========================================================
 
-def analyze_with_ai(answers):
+def detect_scenario(first_answer):
+
+    if not model:
+        return random.choice(list(SCENARIOS.keys()))
+
+    prompt = f"""
+    Użytkownik odpowiedział:
+
+    "{first_answer}"
+
+    Wybierz jeden najlepiej pasujący kierunek emocjonalny.
+
+    Dostępne kierunki:
+
+    - spokój
+    - ciekawość
+    - zmęczenie
+    - kontakt
+    - introspekcja
+    - lekkość
+    - chaos
+
+    Zwróć WYŁĄCZNIE nazwę kierunku.
+    """
+
+    try:
+
+        response = model.generate_content(prompt)
+
+        scenario = response.text.strip().lower()
+
+        if scenario in SCENARIOS:
+            return scenario
+
+        return random.choice(list(SCENARIOS.keys()))
+
+    except:
+        return random.choice(list(SCENARIOS.keys()))
+
+# =========================================================
+# AI AURA
+# =========================================================
+
+def analyze_with_ai(answers, scenario):
 
     if not model:
         return random.choice(FALLBACK_AURAS)
 
     prompt = f"""
-    Jesteś poetą-psychologiem ambientowej aplikacji SZEPT.
+    Jesteś poetą-psychologiem aplikacji SZEPT.
 
-    Analizujesz emocjonalny klimat wypowiedzi użytkownika.
+    Kierunek emocjonalny:
+    {scenario}
 
     Odpowiedzi użytkownika:
     {answers}
@@ -347,19 +423,18 @@ def analyze_with_ai(answers):
 
     {{
       "aura": "krótka poetycka nazwa",
-      "description": "jedno subtelne poetyckie zdanie",
+      "description": "jedno subtelne zdanie",
       "traits": ["cecha1", "cecha2", "cecha3"],
       "next_path": "nazwa ścieżki",
       "whisper_level": liczba 1-5
     }}
 
     ZASADY:
-    - melancholijnie
     - subtelnie
-    - spokojnie
+    - emocjonalnie
     - bez diagnoz
-    - bez oceniania
-    - krótko
+    - bez mroku na siłę
+    - naturalnie
     - po polsku
     """
 
@@ -373,9 +448,7 @@ def analyze_with_ai(answers):
             text = text.replace("```json", "")
             text = text.replace("```", "")
 
-        data = json.loads(text)
-
-        return data
+        return json.loads(text)
 
     except:
         return random.choice(FALLBACK_AURAS)
@@ -433,6 +506,24 @@ if not st.session_state.finished:
 
                 st.session_state.answers.append(answer)
 
+                # =====================================================
+                # PO PIERWSZEJ ODPOWIEDZI
+                # =====================================================
+
+                if st.session_state.step == 0:
+
+                    detected = detect_scenario(answer)
+
+                    st.session_state.scenario = detected
+
+                    next_questions = SCENARIOS[detected]
+
+                    st.session_state.questions.extend(next_questions)
+
+                # =====================================================
+                # PRZEJŚCIA
+                # =====================================================
+
                 if st.session_state.step < 2:
                     st.session_state.step += 1
 
@@ -451,7 +542,10 @@ else:
 
         time.sleep(2)
 
-        aura = analyze_with_ai(st.session_state.answers)
+        aura = analyze_with_ai(
+            st.session_state.answers,
+            st.session_state.scenario
+        )
 
     st.markdown("""
     <div class="aura-box">
