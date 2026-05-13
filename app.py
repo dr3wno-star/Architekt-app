@@ -2,7 +2,17 @@ import streamlit as st
 import random
 
 # =========================================================
-# 1. BAZA WYNIKÓW (TWOJE DEFINICJE AUR)
+# 1. INICJALIZACJA SESJI (MUSI BYĆ NA POCZĄTKU)
+# =========================================================
+
+if "step" not in st.session_state:
+    st.session_state.step = 0
+
+if "scores" not in st.session_state:
+    st.session_state.scores = {"PRAGMATYK": 0, "STRAZNIK": 0, "DUCH": 0, "WEDROWIEC": 0}
+
+# =========================================================
+# 2. BAZA WYNIKÓW
 # =========================================================
 
 AURA_DEFINITIONS = {
@@ -23,13 +33,13 @@ AURA_DEFINITIONS = {
     },
     "WEDROWIEC": {
         "tytul": "Aura Złota (Wędrowiec)",
-        "opis": "Twoja energia jest w ciągłym ruchu. Jesteś cieplem zachodzącego słońca i ciekawością dziecka. Szukasz relacji i głębokich połączeń z ludźmi, ale Twoja natura jest zmienna i trudna do uchwycenia.",
+        "opis": "Twoja energia jest w ciągłym ruchu. Jesteś ciepłem zachodzącego słońca i ciekawością dziecka. Szukasz relacji i głębokich połączeń z ludźmi, ale Twoja natura jest zmienna i trudna do uchwycenia.",
         "pytanie": "Gdzie jest Twoje miejsce, gdy gasną wszystkie światła?"
     }
 }
 
 # =========================================================
-# 2. BAZA PYTAŃ (MAPOWANIE NA ARCHETYPY)
+# 3. BAZA PYTAŃ
 # =========================================================
 
 QUESTIONS_DATABASE = [
@@ -69,7 +79,7 @@ QUESTIONS_DATABASE = [
 ]
 
 # =========================================================
-# 3. INTERFEJS I LOGIKA (BEZ AI)
+# 4. DESIGN I LOGIKA
 # =========================================================
 
 st.set_page_config(page_title="SZEPT", layout="centered")
@@ -88,24 +98,19 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-if "step" not in st.session_state:
-    st.session_state.step = 0
-    st.session_state.scores = {"PRAGMATYK": 0, "STRAZNIK": 0, "DUCH": 0, "WEDROWIEC": 0}
-
 # FAZA PYTAŃ
 if st.session_state.step < len(QUESTIONS_DATABASE):
     q = QUESTIONS_DATABASE[st.session_state.step]
     st.markdown(f'<div class="question-title">{q["pytanie"]}</div>', unsafe_allow_html=True)
     
     for text, archetyp in q["opcje"]:
-        if st.button(text):
+        if st.button(text, key=f"btn_{st.session_state.step}_{text}"):
             st.session_state.scores[archetyp] += 1
             st.session_state.step += 1
             st.rerun()
 
-# FAZA WYNIKU (LOGIKA PUNKTOWA)
-else:
-    # Wybieramy archetyp z największą liczbą punktów
+# FAZA WYNIKU
+elif st.session_state.step >= len(QUESTIONS_DATABASE):
     final_archetyp = max(st.session_state.scores, key=st.session_state.scores.get)
     wynik = AURA_DEFINITIONS[final_archetyp]
     
