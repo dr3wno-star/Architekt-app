@@ -1,150 +1,504 @@
 import streamlit as st
-import time
-import random
 import google.generativeai as genai
+import random
+import time
+import json
+import os
 
 # =========================================================
-# KONFIGURACJA AI & SZEPTU
+# KONFIGURACJA STRONY
 # =========================================================
 
-# WKLEJ SWÓJ KLUCZ TUTAJ
-API_KEY = "AIzaSyCCtHo_I9MCk5ud7frk_wn3XnVhUM7EwAI" 
+st.set_page_config(
+    page_title="SZEPT",
+    page_icon="🌙",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
 
-def init_ai():
-    if API_KEY and API_KEY != "TWOJ_KLUCZ_API":
-        try:
-            genai.configure(api_key=API_KEY)
-            # Używamy modelu flash, który jest najszybszy i najstabilniejszy dla darmowych kluczy
-            return genai.GenerativeModel('gemini-1.5-flash')
-        except Exception as e:
-            st.error(f"Błąd inicjalizacji AI: {e}")
-            return None
-    return None
-
-model = init_ai()
-
-st.set_page_config(page_title="SZEPT | AI", page_icon="🌙", layout="centered")
+# =========================================================
+# CSS / DESIGN
+# =========================================================
 
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,400;1,400&family=Inter:wght@100;300;400&display=swap');
-.stApp { background-color: #08080A; color: #94A3B8; font-family: 'Inter', sans-serif; }
-.brand-header { text-align: center; padding: 60px 0 20px 0; }
-.brand-name { font-size: 2.8rem; letter-spacing: 0.8rem; color: #F8FAFC; font-weight: 100; text-transform: uppercase; margin-bottom: 5px; }
-.brand-tagline { font-family: 'Bodoni Moda', serif; font-style: italic; color: #475569; font-size: 0.9rem; letter-spacing: 0.1rem; }
-.whisper-card { background: rgba(255, 255, 255, 0.01); border: 1px solid rgba(255, 255, 255, 0.05); padding: 40px; border-radius: 2px; margin: 20px 0; text-align: center; }
-.question-text { font-size: 1.3rem; color: #CBD5E1; line-height: 1.8; font-weight: 300; }
-.aura-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.3rem; color: #64748B; margin-bottom: 10px; }
-.aura-value { font-family: 'Bodoni Moda', serif; font-size: 1.8rem; color: #F1F5F9; margin-top: 5px; line-height: 1.4; }
-textarea { background-color: transparent !important; border: none !important; border-bottom: 1px solid #1E293B !important; color: #F8FAFC !important; font-size: 1.1rem !important; text-align: center !important; }
-.stButton > button { background: transparent !important; color: #64748B !important; border: 1px solid #1E293B !important; border-radius: 0px !important; padding: 0.5rem 2rem !important; transition: 0.5s; letter-spacing: 0.1rem; width: 100%; }
-footer, header {visibility: hidden;}
+
+@import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:wght@400;500&family=Inter:wght@200;300;400;500&display=swap');
+
+#MainMenu {visibility:hidden;}
+footer {visibility:hidden;}
+header {visibility:hidden;}
+
+html, body, [class*="css"] {
+    font-family: 'Inter', sans-serif;
+}
+
+.stApp {
+    background:
+    radial-gradient(circle at top, #10131A 0%, #08080A 45%);
+    color: #E2E8F0;
+}
+
+.block-container {
+    padding-top: 2rem;
+    max-width: 760px;
+}
+
+.brand {
+    text-align: center;
+    margin-top: 70px;
+    margin-bottom: 60px;
+    animation: fadeIn 1.2s ease;
+}
+
+.brand-title {
+    font-size: 3.2rem;
+    font-weight: 200;
+    letter-spacing: 1rem;
+    color: #F8FAFC;
+}
+
+.brand-sub {
+    margin-top: 12px;
+    color: #475569;
+    font-style: italic;
+    font-family: 'Bodoni Moda', serif;
+    letter-spacing: 0.15rem;
+}
+
+.question-card {
+    padding: 45px;
+    border: 1px solid rgba(255,255,255,0.05);
+    background: rgba(255,255,255,0.015);
+    backdrop-filter: blur(10px);
+    margin-bottom: 25px;
+    animation: fadeIn 1s ease;
+}
+
+.question-text {
+    font-size: 1.35rem;
+    line-height: 2rem;
+    text-align: center;
+    color: #CBD5E1;
+    font-weight: 300;
+}
+
+textarea {
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 1px solid #1E293B !important;
+    color: white !important;
+    text-align: center !important;
+    font-size: 1.05rem !important;
+}
+
+textarea:focus {
+    box-shadow: none !important;
+}
+
+.stButton button {
+    width: 100%;
+    background: transparent !important;
+    border: 1px solid #1E293B !important;
+    color: #94A3B8 !important;
+    padding: 0.8rem 2rem !important;
+    border-radius: 0px !important;
+    transition: 0.4s;
+    letter-spacing: 0.15rem;
+}
+
+.stButton button:hover {
+    border-color: #334155 !important;
+    color: white !important;
+}
+
+.aura-box {
+    padding: 55px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.02);
+    animation: fadeIn 1s ease;
+}
+
+.aura-title {
+    color: #64748B;
+    font-size: 0.75rem;
+    letter-spacing: 0.3rem;
+    text-transform: uppercase;
+}
+
+.aura-name {
+    font-size: 2.7rem;
+    margin-top: 20px;
+    color: white;
+    font-family: 'Bodoni Moda', serif;
+    line-height: 1.3;
+}
+
+.aura-desc {
+    margin-top: 25px;
+    color: #94A3B8;
+    line-height: 1.9rem;
+    font-size: 1rem;
+}
+
+.traits {
+    margin-top: 35px;
+}
+
+.trait {
+    display: inline-block;
+    padding: 8px 14px;
+    margin: 5px;
+    border: 1px solid #1E293B;
+    color: #94A3B8;
+    font-size: 0.85rem;
+    letter-spacing: 0.05rem;
+}
+
+.level {
+    margin-top: 40px;
+    color: #475569;
+    letter-spacing: 0.2rem;
+    font-size: 0.75rem;
+    line-height: 1.8;
+}
+
+.divider {
+    margin-top: 50px;
+    margin-bottom: 40px;
+    border-color: #111827;
+}
+
+.progress {
+    text-align: center;
+    color: #334155;
+    margin-bottom: 15px;
+    letter-spacing: 0.2rem;
+    font-size: 0.7rem;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity:0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity:1;
+        transform: translateY(0px);
+    }
+}
+
 </style>
 """, unsafe_allow_html=True)
 
 # =========================================================
-# LOGIKA AI ARCHITEKTA
+# GEMINI API
 # =========================================================
 
-def analyze_aura_with_ai(answers):
-    if not model:
-        return "Błąd Konfiguracji | Nie podano klucza API w kodzie."
-    
-    # Prompt zoptymalizowany pod kątem stabilności odpowiedzi
-    prompt = f"""
-    Rola: Psycholog-poeta 'Architekt'.
-    Zadanie: Analiza energii trzech wypowiedzi.
-    Wypowiedzi:
-    1: {answers[0]}
-    2: {answers[1]}
-    3: {answers[2]}
+API_KEY = st.secrets["GEMINI_API_KEY"]
 
-    Wynik musi mieć format: Nazwa Aury | Opis. 
-    Nazwa: Poetycka, max 3 słowa. 
-    Opis: Jedno zdanie do 10 słów. Język Polski.
-    """
+@st.cache_resource
+def init_ai():
     try:
-        response = model.generate_content(prompt)
-        # Dodatkowa walidacja odpowiedzi
-        if response and response.text:
-            return response.text
-        return "Cisza | Model nie wygenerował tekstu."
-    except Exception as e:
-        return f"Błąd AI | {str(e)}"
+        genai.configure(api_key=API_KEY)
+        return genai.GenerativeModel("gemini-1.5-flash")
+    except:
+        return None
+
+model = init_ai()
 
 # =========================================================
-# BANK PYTAŃ I SESJA
+# PYTANIA
 # =========================================================
 
 QUESTION_BANK = [
-    "Za czym tęskni Twoja głowa, kiedy w pokoju robi się zupełnie cicho?",
-    "Opisz moment, w którym poczułeś, że nie musisz przed nikim niczego udawać.",
+
+    "Za czym tęskni Twoja głowa, kiedy robi się całkiem cicho?",
+
     "Czego najbardziej boisz się w kontakcie z nową osobą?",
-    "Jaka prawda o Tobie jest najtrudniejsza do wypowiedzenia na głos?",
-    "Co jest Twoim prywatnym schronieniem, gdy świat staje się zbyt głośny?",
-    "Gdybyś mógł podarować nieznajomemu jedną myśl, co by to było?",
-    "Czego szukasz w oczach ludzi, których spotykasz po raz pierwszy?"
+
+    "Jak wygląda miejsce, w którym naprawdę odpoczywasz?",
+
+    "Która emocja wraca do Ciebie najczęściej nocą?",
+
+    "Co ukrywasz pod spokojem?",
+
+    "Jakiej obecności najbardziej brakuje Ci w życiu?",
+
+    "Co chciałbyś usłyszeć od drugiego człowieka?",
+
+    "Kiedy ostatni raz poczułeś prawdziwe zrozumienie?",
+
+    "Jakiej ciszy potrzebujesz najbardziej?",
+
+    "Co męczy Cię w relacjach z ludźmi?",
+
+    "Jak wygląda Twoje emocjonalne schronienie?",
+
+    "Jaką część siebie pokazujesz najrzadziej?"
 ]
+
+# =========================================================
+# FALLBACK AUR
+# =========================================================
+
+FALLBACK_AURAS = [
+
+    {
+        "aura": "Cichy Ogień",
+        "description": "Ukrywasz intensywność pod spokojną powierzchnią.",
+        "traits": [
+            "introspekcja",
+            "ostrożność",
+            "głębia"
+        ],
+        "next_path": "nocna rozmowa",
+        "whisper_level": 2
+    },
+
+    {
+        "aura": "Nocne Echo",
+        "description": "Twoje emocje długo rezonują w ciszy.",
+        "traits": [
+            "melancholia",
+            "uważność",
+            "delikatność"
+        ],
+        "next_path": "archiwum ciszy",
+        "whisper_level": 3
+    },
+
+    {
+        "aura": "Miękki Mrok",
+        "description": "Chronisz swoją wrażliwość przed hałasem świata.",
+        "traits": [
+            "spokój",
+            "samotność",
+            "obserwacja"
+        ],
+        "next_path": "głębokie echo",
+        "whisper_level": 4
+    }
+
+]
+
+# =========================================================
+# SESSION STATE
+# =========================================================
+
+if "step" not in st.session_state:
+    st.session_state.step = 0
+
+if "answers" not in st.session_state:
+    st.session_state.answers = []
+
+if "finished" not in st.session_state:
+    st.session_state.finished = False
 
 if "questions" not in st.session_state:
     st.session_state.questions = random.sample(QUESTION_BANK, 3)
-    st.session_state.step = 0
-    st.session_state.answers = []
-    st.session_state.finished = False
 
 # =========================================================
-# INTERFEJS
+# AI ANALIZA
 # =========================================================
 
-st.markdown("<div class='brand-header'><div class='brand-name'>SZEPT</div><div class='brand-tagline'>Where conversations breathe</div></div>", unsafe_allow_html=True)
+def analyze_with_ai(answers):
+
+    if not model:
+        return random.choice(FALLBACK_AURAS)
+
+    prompt = f"""
+    Jesteś poetą-psychologiem ambientowej aplikacji SZEPT.
+
+    Analizujesz emocjonalny klimat wypowiedzi użytkownika.
+
+    Odpowiedzi użytkownika:
+    {answers}
+
+    Zwróć WYŁĄCZNIE poprawny JSON.
+
+    FORMAT:
+
+    {{
+      "aura": "krótka poetycka nazwa",
+      "description": "jedno subtelne poetyckie zdanie",
+      "traits": ["cecha1", "cecha2", "cecha3"],
+      "next_path": "nazwa ścieżki",
+      "whisper_level": liczba 1-5
+    }}
+
+    ZASADY:
+    - klimat melancholijny
+    - subtelny
+    - spokojny
+    - bez diagnoz
+    - bez oceniania
+    - krótko
+    - po polsku
+    """
+
+    try:
+
+        response = model.generate_content(prompt)
+
+        text = response.text.strip()
+
+        if "```json" in text:
+            text = text.replace("```json", "")
+            text = text.replace("```", "")
+
+        data = json.loads(text)
+
+        return data
+
+    except:
+        return random.choice(FALLBACK_AURAS)
+
+# =========================================================
+# EFEKT PISANIA
+# =========================================================
+
+def typewriter(text, speed=0.03):
+
+    placeholder = st.empty()
+
+    current = ""
+
+    for char in text:
+        current += char
+        placeholder.markdown(
+            f"<div class='aura-name'>{current}</div>",
+            unsafe_allow_html=True
+        )
+        time.sleep(speed)
+
+# =========================================================
+# HEADER
+# =========================================================
+
+st.markdown("""
+<div class="brand">
+    <div class="brand-title">SZEPT</div>
+    <div class="brand-sub">Where conversations breathe</div>
+</div>
+""", unsafe_allow_html=True)
+
+# =========================================================
+# FLOW
+# =========================================================
 
 if not st.session_state.finished:
-    current_q = st.session_state.questions[st.session_state.step]
-    st.markdown(f"<div class='whisper-card'><p class='question-text'>{current_q}</p></div>", unsafe_allow_html=True)
-    
-    ans = st.text_area("Twoja myśl", height=150, key=f"ans_{st.session_state.step}", label_visibility="collapsed")
-    
-    c1, c2, c3 = st.columns([1, 1, 1])
-    with c2:
-        if st.button("Uwolnij szept"):
-            if ans.strip():
-                st.session_state.answers.append(ans)
-                if st.session_state.step < 2:
-                    st.session_state.step += 1
-                    st.rerun()
-                else:
-                    st.session_state.finished = True
-                    st.rerun()
 
-else:
-    # ANALIZA
-    with st.spinner("Architekt wsłuchuje się w Twoje echo..."):
-        time.sleep(1.5)
-        aura_raw = analyze_aura_with_ai(st.session_state.answers)
-    
-    # Próba parsowania wyniku
-    if "|" in aura_raw:
-        parts = aura_raw.split("|", 1)
-        aura_name = parts[0]
-        aura_desc = parts[1]
-    else:
-        aura_name = aura_raw
-        aura_desc = "Analiza zakończona pomyślnie."
+    current_question = st.session_state.questions[st.session_state.step]
 
     st.markdown(f"""
-        <div class='whisper-card'>
-            <p class='aura-title'>Twoja Aura</p>
-            <p class='aura-value'>{aura_name.strip()}</p>
-            <p style='color: #475569; font-size: 0.9rem; margin-top: 10px;'>{aura_desc.strip()}</p>
-        </div>
+    <div class="progress">
+        RYTUAŁ {st.session_state.step + 1} / 3
+    </div>
     """, unsafe_allow_html=True)
-    
-    st.markdown("<hr style='border-color: #1E293B;'><p style='text-align:center; color:#1E293B; letter-spacing:0.2rem; font-size:0.7rem;'>SESJA ODPOCZYWA</p>", unsafe_allow_html=True)
 
-    rc1, rc2, rc3 = st.columns([1, 1, 1])
-    with rc2:
-        if st.button("Powróć do rytuału"):
+    st.markdown(f"""
+    <div class="question-card">
+        <div class="question-text">
+            {current_question}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    answer = st.text_area(
+        "",
+        height=160,
+        placeholder="Pozwól myśli wybrzmieć..."
+    )
+
+    c1, c2, c3 = st.columns([1,1,1])
+
+    with c2:
+
+        if st.button("UWOLNIJ SZEPT"):
+
+            if answer.strip():
+
+                st.session_state.answers.append(answer)
+
+                if st.session_state.step < 2:
+                    st.session_state.step += 1
+                else:
+                    st.session_state.finished = True
+
+                st.rerun()
+
+# =========================================================
+# WYNIK
+# =========================================================
+
+else:
+
+    with st.spinner("Architekt wsłuchuje się w Twoje echo..."):
+
+        time.sleep(2)
+
+        aura = analyze_with_ai(st.session_state.answers)
+
+    st.markdown("""
+    <div class="aura-box">
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="aura-title">
+        TWOJA AURA
+    </div>
+    """, unsafe_allow_html=True)
+
+    typewriter(aura["aura"])
+
+    st.markdown(f"""
+    <div class="aura-desc">
+        {aura["description"]}
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="traits">
+    """, unsafe_allow_html=True)
+
+    for trait in aura["traits"]:
+
+        st.markdown(
+            f"<span class='trait'>{trait}</span>",
+            unsafe_allow_html=True
+        )
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown(f"""
+    <div class="level">
+
+        WHISPER LEVEL • {aura["whisper_level"]}
+
+        <br><br>
+
+        ODBLOKOWANA ŚCIEŻKA • {aura["next_path"].upper()}
+
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <hr class="divider">
+    """, unsafe_allow_html=True)
+
+    c1, c2, c3 = st.columns([1,1,1])
+
+    with c2:
+
+        if st.button("POWRÓĆ DO RYTUAŁU"):
+
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
+
             st.rerun()
-            
