@@ -1,13 +1,9 @@
 import streamlit as st
 import google.generativeai as genai
+import time
 
-# =========================================================
-# 1. RDZEŃ DIAGNOSTYCZNY (BACK-TO-BASICS)
-# =========================================================
-
+# --- SILNIK ADAPTACYJNY ---
 st.set_page_config(page_title="SZEPT", layout="centered")
-
-# TWÓJ KLUCZ API
 API_KEY = "AIzaSyDCmJ-nxrYU3w1MSzPNij5KYd6r1Btfbog" 
 
 @st.cache_resource
@@ -23,88 +19,80 @@ WORKING_MODEL = get_model()
 
 def get_next_question(history):
     if not WORKING_MODEL: return "Błąd połączenia."
-    
     try:
         model = genai.GenerativeModel(WORKING_MODEL)
         
-        # PROTOKÓŁ: Sekwencyjna Inwigilacja Aury
+        # PROTOKÓŁ KALIBRACJI:
+        # 1. Pierwsze 3 pytania: Badaj styl, metaforę i stopień wrażliwości.
+        # 2. Jeśli użytkownik jest konkretny (np. "auto", "dom") - pytaj o działanie i fakty.
+        # 3. Jeśli użytkownik jest abstrakcyjny (np. "dąb", "kurz") - wejdź w głąb symboliki.
         persona = (
-            "Jesteś Dziennikiem Badawczym. Twoim celem jest przeprowadzenie wywiadu profilującego aurę. "
-            "ZASADA: Na podstawie ostatniej odpowiedzi użytkownika zadaj jedno, celne pytanie, "
-            "które pogłębi analizę jego temperamentu i energii. "
-            "Zaczynaj od pytań luźnych, przechodząc w coraz bardziej kierunkowe i intymne. "
-            "Nie wyciągaj jeszcze wniosków. Tylko pytaj. Krótko, chłodno, precyzyjnie. Max 15 słów."
+            "Jesteś Dziennikiem Kalibrującym. Twoim zadaniem jest ocena 'ciężaru gatunkowego' użytkownika. "
+            "Na początku zadawaj pytania o zwykłe przedmioty lub sytuacje. "
+            "Analizuj JĘZYK: jeśli jest prosty, bądź konkretny. Jeśli jest bogaty, bądź filozoficzny. "
+            "Twoim celem jest ustalenie: czy to Aura Praktyczna, czy Aura Duchowa. "
+            "Zadaj tylko jedno pytanie. Krótko i celnie. Max 12 słów."
         )
         
         context = f"SYSTEM: {persona}\n\n"
         for msg in history:
             role = "Użytkownik" if msg["role"] == "user" else "Dziennik"
             context += f"{role}: {msg['content']}\n"
-            
+        
         response = model.generate_content(context)
         return response.text
     except Exception as e:
-        return f"Przerwanie skanu: {str(e)}"
+        return f"Cisza w eterze... ({str(e)})"
 
-# =========================================================
-# 2. DESIGN (SUROWY MINIMALIZM)
-# =========================================================
-
+# --- DESIGN SZEPTU ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;400&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@1,400&family=Inter:wght@100;200&display=swap');
     #MainMenu, footer, header {visibility:hidden;}
-    .stApp { background-color: #050505 !important; color: #888; }
-    
+    .stApp { background-color: #050505 !important; }
+    [data-testid="stStatusWidget"] { visibility: hidden; display: none; }
+
     .question-box { 
-        font-family: 'Inter', sans-serif; 
-        font-size: 1.4rem; 
-        color: #eee; 
-        margin-top: 100px;
-        margin-bottom: 50px; 
-        text-align: center;
-        font-weight: 200;
-        letter-spacing: 1px;
+        font-family: 'Bodoni Moda', serif; font-size: 1.8rem; color: #ffffff; 
+        margin-top: 150px; text-align: center; font-style: italic;
+        animation: breath 4s ease-in-out infinite;
     }
-    
-    .history-text { 
-        font-family: 'Inter', sans-serif;
-        font-size: 0.8rem;
-        color: #333; 
-        margin-bottom: 5px; 
-        text-align: center;
+
+    @keyframes breath { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+    .szept-loading {
+        font-family: 'Inter', sans-serif; color: #444; text-align: center;
+        letter-spacing: 5px; font-size: 0.7rem; margin-top: 30px;
+        animation: whisper 2s linear infinite;
     }
+
+    @keyframes whisper { 0% { opacity: 0; } 50% { opacity: 0.4; } 100% { opacity: 0; } }
 </style>
 """, unsafe_allow_html=True)
 
-# =========================================================
-# 3. INTERFEJS
-# =========================================================
-
+# --- LOGIKA ---
 if "chat" not in st.session_state:
+    # Pierwsze pytanie - "Zwykły" zapalnik
     st.session_state.chat = [
-        {"role": "assistant", "content": "Gdybyś był zapachem w opuszczonym domu, czym byś był?"}
+        {"role": "assistant", "content": "Gdybyś miał opisać swój ulubiony przedmiot, co by to było?"}
     ]
 
-# Wyświetlamy tylko ostatnie pytanie na środku (focus mode)
 last_question = st.session_state.chat[-1]["content"]
 st.markdown(f'<div class="question-box">{last_question}</div>', unsafe_allow_html=True)
 
-# Historia (mały druk na dole dla kontekstu)
-with st.expander("Ślad Twoich odpowiedzi"):
-    for m in st.session_state.chat[:-1]:
-        prefix = "— " if m["role"] == "user" else ""
-        st.markdown(f'<div class="history-text">{prefix}{m["content"]}</div>', unsafe_allow_html=True)
-
-user_input = st.chat_input("Odpowiedz...")
+placeholder = st.empty()
+user_input = st.chat_input("Twoja odpowiedź...")
 
 if user_input:
     st.session_state.chat.append({"role": "user", "content": user_input})
-    with st.spinner(" "):
-        next_q = get_next_question(st.session_state.chat)
-        st.session_state.chat.append({"role": "assistant", "content": next_q})
+    placeholder.markdown('<div class="szept-loading">Skanowanie struktury słów...</div>', unsafe_allow_html=True)
+    
+    next_q = get_next_question(st.session_state.chat)
+    time.sleep(1) # Dla podtrzymania klimatu
+    
+    st.session_state.chat.append({"role": "assistant", "content": next_q})
     st.rerun()
 
-if st.sidebar.button("ZACZNIJ OD NOWA"):
+if st.sidebar.button("RESETUJ SKAN"):
     st.session_state.clear()
     st.rerun()
