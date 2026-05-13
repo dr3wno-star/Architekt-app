@@ -11,7 +11,7 @@ import google.generativeai as genai
 API_KEY = "AIzaSyCCtHo_I9MCk5ud7frk_wn3XnVhUM7EwAI" 
 
 def init_ai():
-    if API_KEY and API_KEY != "AIzaSyCCtHo_I9MCk5ud7frk_wn3XnVhUM7EwAI":
+    if API_KEY and API_KEY != "TWOJ_KLUCZ_API":
         try:
             genai.configure(api_key=API_KEY)
             # Używamy modelu flash, który jest najszybszy i najstabilniejszy dla darmowych kluczy
