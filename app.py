@@ -2,50 +2,34 @@ import streamlit as st
 import requests
 import json
 
-# =========================================================
-# 1. SILNIK DZIENNIKA (KOMPATYBILNOŚĆ PRO)
-# =========================================================
-
 st.set_page_config(page_title="SZEPT", page_icon="📖", layout="centered")
 
-# Pobieramy klucz z Secrets (skoro diagnostyka potwierdziła, że go widać)
 GEMINI_KEY = st.secrets.get("GEMINI_KEY")
 
 def call_ai(messages):
-    if not GEMINI_KEY:
-        return "Błąd: Brak klucza w Secrets."
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_KEY}"
     
-    # Próbujemy najbardziej uniwersalnego modelu Gemini Pro
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_KEY}"
-    
-    contents = []
-    # Gemini 1.0 Pro wymaga specyficznej struktury bez systemInstruction
-    # Wstrzykujemy osobowość dziennika do pierwszego wpisu
-    persona = "Jesteś tajemniczym, mrocznym Dziennikiem. Odpowiadaj krótko i wnikliwie. Nie bądź pomocny."
-    
-    for i, m in enumerate(messages):
-        role = "user" if m["role"] == "user" else "model"
-        text = m["content"]
-        if i == 0 and role == "user":
-            text = f"CONTEXT: {persona}\n\nUSER: {text}"
-        contents.append({"role": role, "parts": [{"text": text}]})
+    contents = [{"role": "user" if m["role"] == "user" else "model", 
+                 "parts": [{"text": m["content"]}]} for m in messages]
 
-    payload = {"contents": contents}
+    payload = {
+        "contents": contents,
+        "systemInstruction": {
+            "parts": [{"text": "Jesteś tajemniczym, mrocznym Dziennikiem. Odpowiadasz krótko (1-2 zdania). Nie jesteś pomocny – jesteś wnikliwy i prowokujący. Czytasz między wierszami i wytykasz użytkownikowi jego wahania."}]
+        },
+        "generationConfig": {"temperature": 1.0, "maxOutputTokens": 150}
+    }
     
     try:
         response = requests.post(url, json=payload, timeout=20)
         res_json = response.json()
         if response.status_code != 200:
-            # Jeśli Gemini Pro też zawiedzie, wypiszemy błąd
             return f"Błąd API ({response.status_code}): {res_json.get('error', {}).get('message')}"
         return res_json['candidates'][0]['content']['parts'][0]['text']
     except:
         return "Atrament rozmył się w ciemności..."
 
-# =========================================================
-# 2. ESTETYKA I INTERFEJS
-# =========================================================
-
+# ESTETYKA
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@1,400&family=Inter:wght@200;400&display=swap');
@@ -61,14 +45,11 @@ st.markdown('<h1 style="text-align:center; font-weight:100; letter-spacing:1.2re
 if "journal" not in st.session_state:
     st.session_state.journal = [{"role": "assistant", "content": "Czy boisz się tego, co o Tobie wiem?"}]
 
-# Wyświetlanie
 for m in st.session_state.journal:
-    if m["role"] == "assistant":
-        st.markdown(f'<div class="ai-text">{m["content"]}</div>', unsafe_allow_html=True)
-    else:
-        st.markdown(f'<div class="user-text"> — {m["content"]}</div>', unsafe_allow_html=True)
+    role = "user-text" if m["role"] == "user" else "ai-text"
+    prefix = " — " if m["role"] == "user" else ""
+    st.markdown(f'<div class="{role}">{prefix}{m["content"]}</div>', unsafe_allow_html=True)
 
-# Wejście
 user_input = st.chat_input("Napisz do dziennika...")
 
 if user_input:
@@ -78,6 +59,6 @@ if user_input:
         st.session_state.journal.append({"role": "assistant", "content": res})
     st.rerun()
 
-if st.sidebar.button("RESET"):
+if st.sidebar.button("SPAL STRONY"):
     st.session_state.clear()
     st.rerun()
