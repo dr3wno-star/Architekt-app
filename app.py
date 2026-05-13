@@ -7,17 +7,19 @@ import google.generativeai as genai
 # KONFIGURACJA AI & SZEPTU
 # =========================================================
 
-# TUTAJ WKLEJ SWÓJ KLUCZ
+# WKLEJ TUTAJ SWÓJ KLUCZ (Zaczyna się od AIza...)
 API_KEY = "AIzaSyCCtHo_I9MCk5ud7frk_wn3XnVhUM7EwAI" 
 
-if API_KEY != "AIzaSyCCtHo_I9MCk5ud7frk_wn3XnVhUM7EwAI":
+# Inicjalizacja modelu tylko jeśli klucz jest wpisany
+if API_KEY != "TWOJ_KLUCZ_API":
     genai.configure(api_key=API_KEY)
     model = genai.GenerativeModel('gemini-1.5-flash')
 else:
-    st.error("Brak klucza API. Wklej go w kodzie, aby AI mogło działać.")
+    model = None
 
 st.set_page_config(page_title="SZEPT | AI", page_icon="🌙", layout="centered")
 
+# STYLE (Bez zmian, by zachować klimat)
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,400;1,400&family=Inter:wght@100;300;400&display=swap');
@@ -40,24 +42,24 @@ footer, header {visibility: hidden;}
 # =========================================================
 
 def analyze_aura_with_ai(answers):
-    prompt = f"""
-    Jesteś 'Architektem' w aplikacji SZEPT. Twoim zadaniem jest analiza profilu psychologicznego użytkownika na podstawie jego szczerych odpowiedzi.
+    if not model:
+        return "Czysta Karta | Brak połączenia z sercem Architekta (Klucz API)."
     
-    Odpowiedzi użytkownika:
+    prompt = f"""
+    Jesteś 'Architektem' w aplikacji SZEPT. Analizuj energię tych słów:
     1. {answers[0]}
     2. {answers[1]}
     3. {answers[2]}
 
-    Stwórz nazwę 'Aury' dla tego użytkownika (max 3 słowa). Aura musi być poetycka, minimalistyczna i trafiać w sedno emocji (np. 'Zasypana Tęsknota', 'Spokój Przed Burzą', 'Analityczna Cisza').
-    Następnie dopisz jedno krótkie zdanie (max 10 słów), które wyjaśnia tę aurę.
-    
-    Format: Nazwa Aury | Opis
+    Stwórz nazwę 'Aury' (max 3 słowa, poetycko i minimalistycznie).
+    Dopisz jedno krótkie zdanie (max 10 słów) wyjaśniające tę energię.
+    Używaj języka polskiego. Format: Nazwa Aury | Opis
     """
     try:
         response = model.generate_content(prompt)
         return response.text
-    except Exception as e:
-        return "Czysta Karta | Połączenie z Architektem zostało przerwane."
+    except:
+        return "Cisza | Architekt potrzebuje chwili wytchnienia."
 
 # =========================================================
 # BANK PYTAŃ I SESJA
@@ -68,10 +70,13 @@ QUESTION_BANK = [
     "Opisz moment, w którym poczułeś, że nie musisz przed nikim niczego udawać.",
     "Czego najbardziej boisz się w kontakcie z nową osobą?",
     "Jaka prawda o Tobie jest najtrudniejsza do wypowiedzenia na głos?",
-    "Co jest Twoim prywatnym schronieniem, gdy świat staje się zbyt głośny?"
+    "Co jest Twoim prywatnym schronieniem, gdy świat staje się zbyt głośny?",
+    "Gdybyś mógł podarować nieznajomemu jedną myśl, co by to było?",
+    "Czego szukasz w oczach ludzi, których spotykasz po raz pierwszy?"
 ]
 
-if "questions" not in st.session_state:
+# Wymuszenie losowania jeśli sesja jest pusta
+if "questions" not in st.session_state or not st.session_state.questions:
     st.session_state.questions = random.sample(QUESTION_BANK, 3)
     st.session_state.step = 0
     st.session_state.answers = []
@@ -85,26 +90,31 @@ st.markdown("<div class='brand-header'><div class='brand-name'>SZEPT</div><div c
 
 if not st.session_state.finished:
     current_q = st.session_state.questions[st.session_state.step]
+    
     st.markdown(f"<div class='whisper-card'><p class='question-text'>{current_q}</p></div>", unsafe_allow_html=True)
-    ans = st.text_area("Twoja myśl", height=150, key=f"ans_{st.session_state.step}", label_visibility="collapsed")
+    
+    ans = st.text_area("Twoja myśl", height=150, key=f"ans_{st.session_state.step}_{len(st.session_state.questions)}", label_visibility="collapsed")
     
     c1, c2, c3 = st.columns([1, 1, 1])
     with c2:
         if st.button("Uwolnij szept"):
             if ans.strip():
                 st.session_state.answers.append(ans)
-                if st.session_state.step < len(st.session_state.questions) - 1:
+                if st.session_state.step < 2:
                     st.session_state.step += 1
+                    st.rerun()
                 else:
                     st.session_state.finished = True
-                st.rerun()
+                    st.rerun()
 
 else:
+    # ANALIZA
     with st.spinner("Architekt wsłuchuje się w Twoje echo..."):
+        time.sleep(1.5)
         aura_raw = analyze_aura_with_ai(st.session_state.answers)
     
     if "|" in aura_raw:
-        aura_name, aura_desc = aura_raw.split("|")
+        aura_name, aura_desc = aura_raw.split("|", 1)
     else:
         aura_name, aura_desc = aura_raw, ""
 
@@ -121,6 +131,8 @@ else:
     rc1, rc2, rc3 = st.columns([1, 1, 1])
     with rc2:
         if st.button("Powróć do rytuału"):
-            for key in list(st.session_state.keys()): del st.session_state[key]
+            # CAŁKOWITY RESET
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
             st.rerun()
             
