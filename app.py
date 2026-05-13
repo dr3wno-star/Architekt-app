@@ -1,44 +1,32 @@
 import streamlit as st
-import requests
-import json
+import google.generativeai as genai
 
 # --- KONFIGURACJA ---
 st.set_page_config(page_title="SZEPT", layout="centered")
 
 # WPISZ TUTAJ SWÓJ KLUCZ (ZACHOWAJ CUDZYSŁÓW)
-API_KEY = "AIzaSyDyDj6oc_N2CJrTtx1drTiKIXHIpfSKNAQ" 
+API_KEY = "AIzaSyDCmJ-nxrYU3w1MSzPNij5KYd6r1Btfbog" 
+
+# Inicjalizacja modelu za pomocą oficjalnej biblioteki
+try:
+    genai.configure(api_key=API_KEY)
+    # Używamy modelu bez wersji w nazwie, by biblioteka sama go znalazła
+    model = genai.GenerativeModel('gemini-1.5-flash')
+except Exception as e:
+    st.error(f"Błąd konfiguracji: {e}")
 
 def szept_engine(history):
-    # Zmiana na v1beta i model gemini-pro (największa kompatybilność)
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={API_KEY}"
-    
-    contents = []
-    for msg in history:
-        role = "user" if msg["role"] == "user" else "model"
-        contents.append({
-            "role": role,
-            "parts": [{"text": msg["content"]}]
-        })
-    
-    payload = {
-        "contents": contents,
-        "generationConfig": {
-            "temperature": 0.9,
-            "maxOutputTokens": 200
-        }
-    }
-    
     try:
-        r = requests.post(url, json=payload, timeout=15)
-        data = r.json()
+        # Konwersja formatu rozmowy dla biblioteki Google
+        chat = model.start_chat(history=[])
+        # Wysyłamy ostatnią wiadomość użytkownika z kontekstem mrocznego dziennika
+        persona = "Jesteś mrocznym, tajemniczym dziennikiem. Odpowiadaj krótko i niepokojąco."
+        full_prompt = f"{persona}\n\nUżytkownik mówi: {history[-1]['content']}"
         
-        if r.status_code != 200:
-            # Wyświetlamy co widzi serwer, żeby nic nas nie zaskoczyło
-            return f"Błąd Atramentu ({r.status_code}): {data.get('error', {}).get('message', 'Nieznany opór')}"
-        
-        return data['candidates'][0]['content']['parts'][0]['text']
+        response = chat.send_message(full_prompt)
+        return response.text
     except Exception as e:
-        return f"Przerwanie połączenia: {str(e)}"
+        return f"Atrament zastyga ({str(e)})"
 
 # --- INTERFEJS ---
 st.markdown("""
@@ -51,14 +39,13 @@ st.markdown("""
 
 st.title("SZEPT")
 
-if "chat" not in st.session_state:
-    st.session_state.chat = [
-        {"role": "user", "content": "Jesteś tajemniczym dziennikiem. Przywitaj mnie mrocznym pytaniem."},
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = [
         {"role": "assistant", "content": "Czy boisz się tego, co o Tobie wiem?"}
     ]
 
 # Wyświetlanie
-for m in st.session_state.chat[1:]:
+for m in st.session_state.chat_history:
     if m["role"] == "assistant":
         st.markdown(f'<div class="dziennik-text">{m["content"]}</div>', unsafe_allow_html=True)
     else:
@@ -68,10 +55,10 @@ for m in st.session_state.chat[1:]:
 user_input = st.chat_input("Napisz...")
 
 if user_input:
-    st.session_state.chat.append({"role": "user", "content": user_input})
-    with st.spinner("Atrament wsiąka..."):
-        ai_response = szept_engine(st.session_state.chat)
-        st.session_state.chat.append({"role": "assistant", "content": ai_response})
+    st.session_state.chat_history.append({"role": "user", "content": user_input})
+    with st.spinner("Wsiąkanie..."):
+        ai_response = szept_engine(st.session_state.chat_history)
+        st.session_state.chat_history.append({"role": "assistant", "content": ai_response})
     st.rerun()
 
 if st.sidebar.button("RESET"):
