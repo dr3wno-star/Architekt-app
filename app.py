@@ -178,37 +178,55 @@ if not st.session_state.finished:
                 st.rerun()
 
 else:
-    # --- WIDOK KOŃCOWY: AURA I SALA ECHO ---
+    # --- ETAP WYNIKU: GENEROWANIE AURY ---
     if "aura_data" not in st.session_state:
-        with st.spinner("Splatanie Twojego echa..."):
-            sys = "Jesteś poetą-psychologiem. Zwróć wyłącznie JSON: {\"aura\": \"nazwa\", \"quote\": \"krótka sentencja\"}"
-            res = call_gemini(f"Analizuj: {st.session_state.answers}", sys, is_json=True)
+        with st.spinner("Architekt dekonstruuje Twoje echa..."):
+            sys = "Jesteś poetą-psychologiem. Zwróć wyłącznie JSON: {\"aura\": \"nazwa\", \"quote\": \"sentencja\", \"analysis\": \"trzy zdania głębokiej interpretacji stanu ducha\"}"
+            res = call_gemini(f"Analizuj te głosy: {st.session_state.answers}", sys, is_json=True)
             try:
                 st.session_state.aura_data = json.loads(res)
+                # ZAPIS DO BAZY
                 save_whisper(st.session_state.answers[-1], st.session_state.aura_data['aura'], st.session_state.scenario)
             except:
-                st.session_state.aura_data = {"aura": "Głębokie Echo", "quote": "Cisza mówi więcej niż tysiąc słów."}
+                st.session_state.aura_data = {"aura": "Głębokie Echo", "quote": "Cisza mówi najwięcej.", "analysis": "Twoje myśli płyną nurtem, którego nie da się jeszcze ująć w proste ramy."}
 
     aura = st.session_state.aura_data
+    
     st.markdown(f"""
     <div class="card">
         <div style="font-size:0.7rem; letter-spacing:0.5rem; color:#475569; margin-bottom:20px;">TWOJA AURA</div>
         <div style="font-size:3.5rem; font-family:'Bodoni Moda', serif;">{aura['aura']}</div>
-        <div style="color:#64748B; font-style:italic; margin-top:30px; font-size:1.25rem;">"{aura['quote']}"</div>
+        <div style="color:#64748B; font-style:italic; margin-top:30px; font-size:1.2rem;">"{aura['quote']}"</div>
     </div>
     """, unsafe_allow_html=True)
 
+    # NOWA SEKCJA: GŁĘBOKI WGLĄD
+    st.markdown(f"""
+    <div style="padding: 20px; border: 1px solid rgba(255,255,255,0.03); background: rgba(255,255,255,0.01); margin-bottom: 40px; text-align: center; font-weight: 200; line-height: 1.8; color: #94A3B8;">
+        {aura.get('analysis', '')}
+    </div>
+    """, unsafe_allow_html=True)
+
+    # SALA ECHO
     st.markdown('<div style="text-align:center; margin-top:60px; color:#1E293B; letter-spacing:0.5rem; font-size:0.75rem;">SALA ECHO</div>', unsafe_allow_html=True)
     
-    with st.spinner("Wsłuchiwanie się w głosy innych..."):
+    with st.spinner("Wsłuchiwanie się..."):
         echos = fetch_echos(st.session_state.scenario)
+        
         if echos:
             for e in echos:
-                st.markdown(f'<div class="echo-card"><div style="font-size:0.6rem; color:#334155; margin-bottom:5px; letter-spacing:0.1rem;">{e["aura"].upper()}</div>"{e["text"]}"</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="echo-card"><div style="font-size:0.6rem; color:#334155; margin-bottom:5px;">{e["aura"].upper()}</div>"{e["text"]}"</div>', unsafe_allow_html=True)
         else:
-            st.markdown('<div style="text-align:center; margin-top:20px; font-style:italic; color:#334155;">Na razie panuje tu cisza.</div>', unsafe_allow_html=True)
+            # "SZEPTY PRZESZŁOŚCI" - Jeśli baza jest pusta, AI generuje echa
+            st.info("Sala Echo jest obecnie pusta. Pozwól, że przywołam cienie poprzednich myśli...")
+            fake_echos = call_gemini(f"Wygeneruj 3 krótkie, poetyckie, anonimowe szepty osób, które czują {st.session_state.scenario}. Rozdziel je średnikiem.", "Jesteś archiwistą szeptów.")
+            if fake_echos:
+                for fe in fake_echos.split(";"):
+                    st.markdown(f'<div class="echo-card"><div style="font-size:0.6rem; color:#334155;">ECHO PRZESZŁOŚCI</div>"{fe.strip()}"</div>', unsafe_allow_html=True)
 
-    if st.button("POWRÓĆ DO POCZĄTKU"):
-        st.session_state.clear()
-        st.rerun()
-                        
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    c1, c2, c3 = st.columns([1,1,1])
+    with c2:
+        if st.button("POWRÓĆ DO POCZĄTKU"):
+            st.session_state.clear()
+            st.rerun()
