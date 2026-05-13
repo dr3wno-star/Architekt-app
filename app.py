@@ -7,19 +7,24 @@ import google.generativeai as genai
 # KONFIGURACJA AI & SZEPTU
 # =========================================================
 
-# WKLEJ TUTAJ SWÓJ KLUCZ (Zaczyna się od AIza...)
+# WKLEJ SWÓJ KLUCZ TUTAJ
 API_KEY = "AIzaSyCCtHo_I9MCk5ud7frk_wn3XnVhUM7EwAI" 
 
-# Inicjalizacja modelu tylko jeśli klucz jest wpisany
-if API_KEY != "TWOJ_KLUCZ_API":
-    genai.configure(api_key=API_KEY)
-    model = genai.GenerativeModel('gemini-1.5-flash')
-else:
-    model = None
+def init_ai():
+    if API_KEY and API_KEY != "AIzaSyCCtHo_I9MCk5ud7frk_wn3XnVhUM7EwAI":
+        try:
+            genai.configure(api_key=API_KEY)
+            # Używamy modelu flash, który jest najszybszy i najstabilniejszy dla darmowych kluczy
+            return genai.GenerativeModel('gemini-1.5-flash')
+        except Exception as e:
+            st.error(f"Błąd inicjalizacji AI: {e}")
+            return None
+    return None
+
+model = init_ai()
 
 st.set_page_config(page_title="SZEPT | AI", page_icon="🌙", layout="centered")
 
-# STYLE (Bez zmian, by zachować klimat)
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,400;1,400&family=Inter:wght@100;300;400&display=swap');
@@ -43,23 +48,29 @@ footer, header {visibility: hidden;}
 
 def analyze_aura_with_ai(answers):
     if not model:
-        return "Czysta Karta | Brak połączenia z sercem Architekta (Klucz API)."
+        return "Błąd Konfiguracji | Nie podano klucza API w kodzie."
     
+    # Prompt zoptymalizowany pod kątem stabilności odpowiedzi
     prompt = f"""
-    Jesteś 'Architektem' w aplikacji SZEPT. Analizuj energię tych słów:
-    1. {answers[0]}
-    2. {answers[1]}
-    3. {answers[2]}
+    Rola: Psycholog-poeta 'Architekt'.
+    Zadanie: Analiza energii trzech wypowiedzi.
+    Wypowiedzi:
+    1: {answers[0]}
+    2: {answers[1]}
+    3: {answers[2]}
 
-    Stwórz nazwę 'Aury' (max 3 słowa, poetycko i minimalistycznie).
-    Dopisz jedno krótkie zdanie (max 10 słów) wyjaśniające tę energię.
-    Używaj języka polskiego. Format: Nazwa Aury | Opis
+    Wynik musi mieć format: Nazwa Aury | Opis. 
+    Nazwa: Poetycka, max 3 słowa. 
+    Opis: Jedno zdanie do 10 słów. Język Polski.
     """
     try:
         response = model.generate_content(prompt)
-        return response.text
-    except:
-        return "Cisza | Architekt potrzebuje chwili wytchnienia."
+        # Dodatkowa walidacja odpowiedzi
+        if response and response.text:
+            return response.text
+        return "Cisza | Model nie wygenerował tekstu."
+    except Exception as e:
+        return f"Błąd AI | {str(e)}"
 
 # =========================================================
 # BANK PYTAŃ I SESJA
@@ -75,8 +86,7 @@ QUESTION_BANK = [
     "Czego szukasz w oczach ludzi, których spotykasz po raz pierwszy?"
 ]
 
-# Wymuszenie losowania jeśli sesja jest pusta
-if "questions" not in st.session_state or not st.session_state.questions:
+if "questions" not in st.session_state:
     st.session_state.questions = random.sample(QUESTION_BANK, 3)
     st.session_state.step = 0
     st.session_state.answers = []
@@ -90,10 +100,9 @@ st.markdown("<div class='brand-header'><div class='brand-name'>SZEPT</div><div c
 
 if not st.session_state.finished:
     current_q = st.session_state.questions[st.session_state.step]
-    
     st.markdown(f"<div class='whisper-card'><p class='question-text'>{current_q}</p></div>", unsafe_allow_html=True)
     
-    ans = st.text_area("Twoja myśl", height=150, key=f"ans_{st.session_state.step}_{len(st.session_state.questions)}", label_visibility="collapsed")
+    ans = st.text_area("Twoja myśl", height=150, key=f"ans_{st.session_state.step}", label_visibility="collapsed")
     
     c1, c2, c3 = st.columns([1, 1, 1])
     with c2:
@@ -113,10 +122,14 @@ else:
         time.sleep(1.5)
         aura_raw = analyze_aura_with_ai(st.session_state.answers)
     
+    # Próba parsowania wyniku
     if "|" in aura_raw:
-        aura_name, aura_desc = aura_raw.split("|", 1)
+        parts = aura_raw.split("|", 1)
+        aura_name = parts[0]
+        aura_desc = parts[1]
     else:
-        aura_name, aura_desc = aura_raw, ""
+        aura_name = aura_raw
+        aura_desc = "Analiza zakończona pomyślnie."
 
     st.markdown(f"""
         <div class='whisper-card'>
@@ -131,7 +144,6 @@ else:
     rc1, rc2, rc3 = st.columns([1, 1, 1])
     with rc2:
         if st.button("Powróć do rytuału"):
-            # CAŁKOWITY RESET
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
             st.rerun()
