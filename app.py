@@ -3,7 +3,7 @@ import requests
 import json
 
 # =========================================================
-# 1. KONFIGURACJA I SILNIK (NAPRAWA BŁĘDU 400)
+# 1. KONFIGURACJA I SILNIK (NAPRAWA 404 / v1beta)
 # =========================================================
 
 st.set_page_config(page_title="SZEPT", page_icon="📖", layout="centered")
@@ -14,28 +14,17 @@ def call_ai(messages, sys_prompt):
     if not GEMINI_KEY:
         return "Błąd: Brak klucza API w Secrets."
     
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_KEY}"
+    # Używamy v1beta z najnowszą stabilną nazwą modelu
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_KEY}"
     
-    # W wersji v1 instrukcję systemową podajemy jako pierwszy element rozmowy
     contents = []
-    
-    # "Wstrzykujemy" osobowość Dziennika na samym początku
-    contents.append({
-        "role": "user", 
-        "parts": [{"text": f"INSTRUKCJA SYSTEMOWA: {sys_prompt}"}]
-    })
-    contents.append({
-        "role": "model", 
-        "parts": [{"text": "Zrozumiałem. Przyjmuję rolę Dziennika. Czekam na Twoje słowa."}]
-    })
-
-    # Dodajemy właściwą historię rozmowy
     for m in messages:
         role = "user" if m["role"] == "user" else "model"
         contents.append({"role": role, "parts": [{"text": m["content"]}]})
 
     payload = {
         "contents": contents,
+        "systemInstruction": {"parts": [{"text": sys_prompt}]},
         "generationConfig": {
             "temperature": 1.0,
             "maxOutputTokens": 200
@@ -75,10 +64,13 @@ st.markdown("""
 if "journal" not in st.session_state:
     st.session_state.journal = []
     
-    # Pierwsze pytanie generowane przez Dziennik
-    sys_init = "Zadaj użytkownikowi jedno krótkie, przenikliwe i nieoczekiwane pytanie otwierające. Nie pytaj o dzień. Zapytaj o coś surowego."
+    # Inicjacja - pierwsze pytanie od Dziennika
+    sys_init = """Jesteś mrocznym, inteligentnym Dziennikiem. 
+    Zadaj użytkownikowi jedno krótkie, przenikliwe i nieoczekiwane pytanie otwierające. 
+    Nie pytaj o samopoczucie. Zapytaj o coś surowego, co dotyczy jego fizycznego otoczenia lub ukrytej myśli."""
+    
     with st.spinner("..."):
-        first_q = call_ai([{"role": "user", "content": "Zacznijmy."}], sys_init)
+        first_q = call_ai([{"role": "user", "content": "Otwórz się."}], sys_init)
         st.session_state.journal.append({"role": "assistant", "content": first_q})
 
 st.markdown('<h1 style="text-align:center; font-weight:100; letter-spacing:1.2rem; margin-top:50px;">SZEPT</h1>', unsafe_allow_html=True)
@@ -98,7 +90,7 @@ user_input = st.chat_input("Twoja odpowiedź...")
 if user_input:
     st.session_state.journal.append({"role": "user", "content": user_input})
     
-    sys_prompt = "Jesteś Dziennikiem. Odpowiadaj krótko (1-2 zdania), prowokująco i inteligentnie. Nie bądź uprzejmy, bądź dociekliwy."
+    sys_prompt = "Jesteś Dziennikiem. Odpowiadaj krótko (1-2 zdania), prowokująco i inteligentnie. Czytaj między wierszami."
     
     with st.spinner("..."):
         response = call_ai(st.session_state.journal, sys_prompt)
