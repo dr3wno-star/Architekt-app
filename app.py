@@ -3,7 +3,7 @@ import google.generativeai as genai
 import time
 
 # =========================================================
-# 1. BAZA DANYCH AURY (6 OPCJI DLA PRECYZJI)
+# 1. BAZA DANYCH AURY (SZEROKA PALETA 6 OPCJI)
 # =========================================================
 
 QUESTIONS_DATABASE = [
@@ -46,24 +46,25 @@ QUESTIONS_DATABASE = [
 # 2. SILNIK AI (GENERATOR REZONANSU)
 # =========================================================
 
-API_KEY = "TWOJ_KLUCZ_AIZA_TUTAJ"
+# TWÓJ KLUCZ API
+API_KEY = "AIzaSyCs2Edq1VXPVJgiUAS01fr2j2eXaQ7tQsk"
 genai.configure(api_key=API_KEY)
 
 def szept_final_analysis(answers):
     try:
+        # Próbujemy Flash, jeśli nie wyjdzie - system wyrzuci błąd do obsługi
         model = genai.GenerativeModel('gemini-1.5-flash')
-        # Persona, która analizuje różnorodność odpowiedzi
         persona = (
-            "Jesteś Dziennikiem, który analizuje aurę na podstawie wielowariantowych odpowiedzi. "
-            "Użytkownik wybrał konkretne obrazy i stany. Twoim zadaniem jest zdefiniować jego 'częstotliwość'. "
-            "Nie powtarzaj jego słów. Zinterpretuj je. Powiedz mu, kim jest w świecie cieni i zadaj "
-            "jedno pytanie, które uderzy w sedno jego postawy. Max 25 słów. Bądź przenikliwy."
+            "Jesteś Dziennikiem Badawczym. Analizujesz aurę użytkownika na podstawie jego wyborów. "
+            "Użytkownik wybrał konkretne obrazy. Twoim zadaniem jest zdefiniować jego 'częstotliwość'. "
+            "Nie powtarzaj jego słów. Zinterpretuj je głęboko. Powiedz mu, kim jest w świecie cieni "
+            "i zadaj jedno pytanie, które uderzy w sedno jego postawy. Max 25 słów."
         )
         profile_data = " | ".join(answers)
         response = model.generate_content(f"SYSTEM: {persona}\nPROFIL: {profile_data}")
         return response.text
     except Exception as e:
-        return "Twoja aura wymyka się definicjom. Czy boisz się własnego odbicia?"
+        return f"Twoja aura wymyka się definicjom. ({str(e)})"
 
 # =========================================================
 # 3. DESIGN I INTERFEJS
@@ -83,7 +84,6 @@ st.markdown("""
         margin-top: 50px; margin-bottom: 40px; color: #fff; font-style: italic; 
     }
 
-    /* Stylizacja przycisków jako listy wyboru */
     .stButton>button { 
         background-color: #0a0a0a; border: 1px solid #222; color: #888; 
         width: 100%; text-align: left; padding: 15px 25px; margin-bottom: 10px;
@@ -102,12 +102,17 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# --- INICJALIZACJA SESJI (ZAPOBIEGA ATTRIBUTE ERROR) ---
 if "step" not in st.session_state:
     st.session_state.step = 0
     st.session_state.answers = []
     st.session_state.analysis = None
 
-# --- FAZA TESTU ---
+# =========================================================
+# 4. LOGIKA PROCESU
+# =========================================================
+
+# FAZA 1: TEST STATYCZNY
 if st.session_state.step < len(QUESTIONS_DATABASE):
     q = QUESTIONS_DATABASE[st.session_state.step]
     st.markdown(f'<div class="question-title">{q["pytanie"]}</div>', unsafe_allow_html=True)
@@ -118,16 +123,14 @@ if st.session_state.step < len(QUESTIONS_DATABASE):
             st.session_state.step += 1
             st.rerun()
 
-# --- FAZA ANALIZY AI ---
-elif st.session_state.step == len(QUESTIONS_DATABASE):
-    if not st.session_state.analysis:
-        with st.spinner(" "):
-            st.session_state.analysis = szept_final_analysis(st.session_state.answers)
-            st.session_state.step += 1
-            st.rerun()
+# FAZA 2: GENEROWANIE WYNIKU PRZEZ AI
+elif st.session_state.step == len(QUESTIONS_DATABASE) and st.session_state.analysis is None:
+    with st.spinner(" "):
+        st.session_state.analysis = szept_final_analysis(st.session_state.answers)
+        st.rerun()
 
-# --- EKRAN WYNIKU ---
-else:
+# FAZA 3: EKRAN KOŃCOWY
+if st.session_state.analysis is not None:
     st.markdown(f'<div class="final-text">{st.session_state.analysis}</div>', unsafe_allow_html=True)
     st.markdown("<br><br>", unsafe_allow_html=True)
     if st.button("RESETUJ PROFIL"):
