@@ -3,23 +3,26 @@ import google.generativeai as genai
 import time
 import random
 
-# --- KONFIGURACJA ODPORNA NA LIMIT ---
+# =========================================================
+# 1. KONFIGURACJA I ODPORNOŚĆ NA BŁĘDY
+# =========================================================
+
 st.set_page_config(page_title="SZEPT", layout="centered")
 
-# TWÓJ KLUCZ API
+# TWOJE SERCE SYSTEMU (KLUCZ API)
 API_KEY = "AIzaSyCs2Edq1VXPVJgiUAS01fr2j2eXaQ7tQsk" 
 genai.configure(api_key=API_KEY)
 
 def get_next_question(history):
-    # Lista modeli do wypróbowania w razie błędu 429
-    model_names = ['gemini-1.5-flash', 'gemini-1.0-pro', 'gemini-1.5-pro']
+    # Lista modeli - jeśli jeden ma limit (429), system bierze kolejny
+    model_names = ['gemini-1.5-flash', 'gemini-1.0-pro']
     
     persona = (
-        "Jesteś Dziennikiem, który widzi przez maski. Twoim celem jest wybadanie aury użytkownika. "
-        "Zaczynaj niewinnie, ale każde kolejne pytanie musi uderzać w słabe punkty odpowiedzi. "
-        "Jeśli użytkownik ucieka w metaforę - wejdź tam za nim. Jeśli jest suchy - kłuj go pytaniami o emocje. "
-        "Twoim zadaniem jest ocenić: czy to dusza Stara, Budująca, czy Pusta. "
-        "Zadaj 1 pytanie. Max 10 słów. Bądź echem, nie robotem."
+        "Jesteś Dziennikiem Badawczym. Twoim celem jest wybadanie aury użytkownika. "
+        "ZACZNIJ OD ZWYKŁYCH RZECZY. Pierwsze pytania muszą być o przedmioty, dom, codzienne wybory. "
+        "Analizuj język: jeśli użytkownik odpowiada prosto, trzymaj się konkretów. "
+        "Jeśli użytkownik odpowiada głęboko, metaforami - powoli wchodź w głąb jego psychiki. "
+        "Zadaj tylko 1 pytanie. Max 12 słów. Nie bądź nachalny, bądź intrygujący."
     )
     
     context = f"SYSTEM: {persona}\n\n"
@@ -34,59 +37,82 @@ def get_next_question(history):
             return response.text
         except Exception as e:
             if "429" in str(e):
-                continue # Próbuj kolejny model z listy
-            return f"Cisza po drugiej stronie... ({str(e)})"
-    return "Wszystkie kanały są obecnie głuche. Spróbuj za chwilę."
+                continue
+            return f"Echo nie wraca... ({str(e)})"
+    return "Cisza. Spróbuj za moment, gdy atrament wyschnie."
 
-# --- DESIGN (ATMOSFERA) ---
+# =========================================================
+# 2. DESIGN - KLIMATYCZNY INTERFEJS
+# =========================================================
+
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@1,400&family=Inter:wght@100&display=swap');
+    
     #MainMenu, footer, header {visibility:hidden;}
-    .stApp { background-color: #030303 !important; }
+    .stApp { background-color: #050505 !important; }
+    
+    /* Ukrycie standardowego spinnera Streamlit */
     [data-testid="stStatusWidget"] { visibility: hidden; display: none; }
 
     .question-box { 
-        font-family: 'Bodoni Moda', serif; font-size: 2rem; color: #fff; 
+        font-family: 'Bodoni Moda', serif; font-size: 1.8rem; color: #ffffff; 
         margin-top: 150px; text-align: center; font-style: italic;
-        text-shadow: 0 0 15px rgba(255,255,255,0.2);
-        animation: pulse 6s infinite;
+        letter-spacing: 1px;
+        animation: focusPulse 5s infinite;
     }
 
-    @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
+    @keyframes focusPulse {
+        0%, 100% { opacity: 0.6; filter: blur(1px); }
+        50% { opacity: 1; filter: blur(0px); }
+    }
 
     .szept-loading {
         font-family: 'Inter', sans-serif; color: #333; text-align: center;
-        letter-spacing: 8px; font-size: 0.6rem; margin-top: 40px;
+        letter-spacing: 6px; font-size: 0.7rem; margin-top: 40px;
         text-transform: uppercase;
+        animation: whisperFade 2s infinite;
     }
+
+    @keyframes whisperFade { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.6; } }
+
+    .stChatInputContainer { border-top: 1px solid #111 !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- INTERFEJS ---
+# =========================================================
+# 3. LOGIKA DZIAŁANIA
+# =========================================================
+
 if "chat" not in st.session_state:
-    # Wybór pierwszego pytania z puli "ciekawych"
+    # "Uziemione" starty, które zrozumie każdy
     starts = [
-        "Jaki przedmiot w Twoim domu najgłośniej milczy?",
-        "Gdybyś był zapachem w opuszczonym kościele, czym byś był?",
-        "Który kolor Twojej aury najbardziej Cię uwiera?"
+        "Jaki przedmiot, który masz pod ręką, najbardziej do Ciebie pasuje?",
+        "Gdybyś miał opisać swój ulubiony zakątek w domu, co by to było?",
+        "Jaki dźwięk kojarzy Ci się z absolutnym spokojem?",
+        "Gdybyś miał dziś zatrzymać jeden moment, co by to było?"
     ]
     st.session_state.chat = [{"role": "assistant", "content": random.choice(starts)}]
 
+# Wyświetlanie aktualnego pytania
 st.markdown(f'<div class="question-box">{st.session_state.chat[-1]["content"]}</div>', unsafe_allow_html=True)
 
 placeholder = st.empty()
-user_input = st.chat_input("Wyznaj...")
+user_input = st.chat_input("Napisz...")
 
 if user_input:
     st.session_state.chat.append({"role": "user", "content": user_input})
     
-    # Animowany efekt ładowania
-    load_texts = ["Cierpliwości, badam drżenie Twoich dłoni...", "Słowa wsiąkają w papier...", "Echo wraca..."]
-    placeholder.markdown(f'<div class="szept-loading">{random.choice(load_texts)}</div>', unsafe_allow_html=True)
+    # Klimatyczne ładowanie
+    placeholder.markdown('<div class="szept-loading">Słucham...</div>', unsafe_allow_html=True)
     
     next_q = get_next_question(st.session_state.chat)
-    time.sleep(1.5) # Podbicie klimatu
+    time.sleep(1) # Chwila na oddech
     
     st.session_state.chat.append({"role": "assistant", "content": next_q})
+    st.rerun()
+
+# Dyskretny reset w sidebarze
+if st.sidebar.button("ZACZNIJ OD NOWA"):
+    st.session_state.clear()
     st.rerun()
