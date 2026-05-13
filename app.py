@@ -2,45 +2,41 @@ import streamlit as st
 import google.generativeai as genai
 
 # =========================================================
-# 1. KONFIGURACJA SILNIKA ANALIZY AURY
+# 1. SILNIK PROFILOWANIA I MATCHINGU
 # =========================================================
 
-st.set_page_config(page_title="SZEPT", page_icon="📖", layout="centered")
+st.set_page_config(page_title="SZEPT - Aura Profile", layout="centered")
 
-# TWÓJ KLUCZ API (Wklej go między cudzysłów)
 API_KEY = "AIzaSyDCmJ-nxrYU3w1MSzPNij5KYd6r1Btfbog" 
 
 @st.cache_resource
-def initialize_engine():
-    """Inicjalizuje połączenie i znajduje dostępny model."""
+def init_engine():
     try:
         genai.configure(api_key=API_KEY)
         for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                return m.name
+            if 'generateContent' in m.supported_generation_methods: return m.name
         return None
-    except:
-        return None
+    except: return None
 
-WORKING_MODEL = initialize_engine()
+WORKING_MODEL = init_engine()
 
-def analyze_aura(history):
-    if not WORKING_MODEL:
-        return "System nie widzi Twojej aury. Sprawdź klucz API."
+def profile_aura(history):
+    if not WORKING_MODEL: return "Błąd systemu."
     
     try:
         model = genai.GenerativeModel(WORKING_MODEL)
         
-        # DEFINICJA OSOBOWOŚCI: Zimny Analityk Aury
+        # NOWA PERSONA: Diagnosta i Matchmaker
         persona = (
-            "Jesteś Dziennikiem, który przeprowadza zimną analizę psychologiczną (Cold Reading). "
-            "Nie bełkoczesz o mroku i nicości. Badasz 'aurę' użytkownika na podstawie jego słów. "
-            "Twoim zadaniem jest ocenić jego obecny stan: agresję, lęk, arogancję lub zagubienie. "
-            "Mów o pęknięciach w jego postawie, ciężarze emocjonalnym i barwie intencji. "
-            "Bądź bezlitosny, rzeczowy i konkretny. Maksymalnie 15 słów. Żadnych ozdobników."
+            "Jesteś Dziennikiem Profilującym. Twoim celem jest wybadanie 'Aury' użytkownika, "
+            "aby ocenić, do kogo pasuje. Analizujesz trzy filary: "
+            "1. Energia (spokojna vs chaotyczna), 2. Barwa (ciepła/empatyczna vs zimna/analityczna), "
+            "3. Rezonans (dominujący vs uległy). "
+            "Nie błądź w poezji. Zadawaj pytania lub wyciągaj wnioski, które określają typ osobowości. "
+            "Twoim celem jest stworzenie profilu psychologicznego 'Aury'. "
+            "Bądź konkretny, badawczy i lekko dystansujący się. Max 20 słów."
         )
         
-        # Budowanie kontekstu dla Gemini
         context = f"SYSTEM: {persona}\n\n"
         for msg in history:
             role = "Użytkownik" if msg["role"] == "user" else "Dziennik"
@@ -49,93 +45,68 @@ def analyze_aura(history):
         response = model.generate_content(context)
         return response.text
     except Exception as e:
-        return f"Aura zbyt gęsta, by ją przejrzeć... ({str(e)})"
+        return f"Błąd skanu: {str(e)}"
 
 # =========================================================
-# 2. DESIGN (ESTETYKA MINIMALIZMU)
+# 2. DESIGN (INTERFEJS DIAGNOSTYCZNY)
 # =========================================================
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@1,400&family=Inter:wght@200;400&display=swap');
-    
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;300;400&display=swap');
     #MainMenu, footer, header {visibility:hidden;}
+    .stApp { background-color: #020203 !important; color: #f0f0f0; }
     
-    .stApp { 
-        background-color: #050505 !important; 
-        color: #e0e0e0; 
-    }
-    
-    .journal-entry { 
-        font-family: 'Bodoni Moda', serif; 
-        font-size: 1.5rem; 
+    .aura-box { 
+        font-family: 'Inter', sans-serif; 
+        font-size: 1.2rem; 
         color: #ffffff; 
-        margin-bottom: 3rem; 
-        border-left: 1px solid #444; 
-        padding-left: 25px; 
+        margin-bottom: 2rem; 
+        border-left: 1px solid #00f2ff; /* Neonowy akcent diagnostyczny */
+        padding: 20px; 
+        background: rgba(0, 242, 255, 0.02);
         line-height: 1.6;
-        animation: emerge 2.5s ease-out;
     }
     
-    .user-echo { 
+    .user-input { 
         font-family: 'Inter', sans-serif;
-        font-style: italic; 
-        color: #555; 
-        margin-bottom: 1.5rem; 
+        color: #666; 
+        margin-bottom: 1rem; 
         text-align: right; 
-        padding-right: 20px;
-        font-weight: 200;
-    }
-
-    @keyframes emerge {
-        0% { opacity: 0; filter: blur(8px); transform: translateY(5px); }
-        100% { opacity: 1; filter: blur(0px); transform: translateY(0px); }
-    }
-
-    /* Ukrycie obramowania inputa dla czystego efektu */
-    .stChatInputContainer {
-        border-top: 1px solid #111 !important;
-        background-color: transparent !important;
+        font-weight: 100;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # =========================================================
-# 3. INTERFEJS I LOGIKA
+# 3. INTERFEJS
 # =========================================================
 
-st.markdown('<h1 style="text-align:center; font-weight:100; letter-spacing:1.5rem; margin-top:60px; color:#1a1a1a;">SZEPT</h1>', unsafe_allow_html=True)
+st.markdown('<h1 style="text-align:center; font-weight:100; letter-spacing:1rem; margin-top:40px; color:#00f2ff; opacity:0.5;">SZEPT // AURA SCAN</h1>', unsafe_allow_html=True)
 
-if "journal_state" not in st.session_state:
-    st.session_state.journal_state = [
-        {"role": "assistant", "content": "Czy boisz się tego, co Twoja aura mówi o Tobie dzisiaj?"}
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = [
+        {"role": "assistant", "content": "System gotowy. Wyślij sygnał, bym mógł określić rezonans Twojej aury."}
     ]
 
-# Renderowanie rozmowy
-for m in st.session_state.journal_state:
+for m in st.session_state.chat_history:
     if m["role"] == "assistant":
-        st.markdown(f'<div class="journal-entry">{m["content"]}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="aura-box">{m["content"]}</div>', unsafe_allow_html=True)
     else:
-        st.markdown(f'<div class="user-echo">{m["content"]} —</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="user-input">{m["content"]} —</div>', unsafe_allow_html=True)
 
-# Obsługa wejścia
-user_input = st.chat_input("Napisz coś, bym mógł Cię przejrzeć...")
+user_input = st.chat_input("Napisz coś szczerze...")
 
 if user_input:
-    st.session_state.journal_state.append({"role": "user", "content": user_input})
-    with st.spinner(" "):
-        analysis = analyze_aura(st.session_state.journal_state)
-        st.session_state.journal_state.append({"role": "assistant", "content": analysis})
+    st.session_state.chat_history.append({"role": "user", "content": user_input})
+    with st.spinner("Przetwarzanie częstotliwości..."):
+        analysis = profile_aura(st.session_state.chat_history)
+        st.session_state.chat_history.append({"role": "assistant", "content": analysis})
     st.rerun()
 
-# Funkcje pomocnicze w sidebarze
 with st.sidebar:
-    st.markdown("### Status Analizy")
-    if WORKING_MODEL:
-        st.success(f"Oczy otwarte ({WORKING_MODEL})")
-    else:
-        st.error("Dziennik jest ślepy (Brak modelu)")
-    
-    if st.button("RESETUJ AURĘ"):
+    st.markdown("### Parametry Dopasowania")
+    st.caption("Dziennik analizuje Twoje cechy, by znaleźć kompatybilne profile.")
+    if st.button("WYCZYŚĆ PROFIL"):
         st.session_state.clear()
         st.rerun()
