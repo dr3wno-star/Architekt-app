@@ -1,4 +1,1 @@
-google-cloud-firestore
-google-auth
-google-api-python-client
-requests
+google-generativeai
