@@ -1,9 +1,9 @@
 import streamlit as st
-import requests
-import json
+import google.generativeai as genai
+import time
 
 # =========================================================
-# 1. KONFIGURACJA SYSTEMU
+# 1. KONFIGURACJA SYSTEMU (OFICJALNE SDK)
 # =========================================================
 
 st.set_page_config(
@@ -13,51 +13,28 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Pobieranie klucza z Secrets (Ustaw to w panelu Streamlit!)
+# Pobieranie klucza z Secrets
 GEMINI_KEY = st.secrets.get("GEMINI_KEY")
 
-def call_ai(messages):
-    if not GEMINI_KEY:
-        return "Błąd: Brak klucza API. Dodaj 'GEMINI_KEY' w Secrets."
-    
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_KEY}"
-    
-    # Budujemy osobowość jako stały kontekst na początku każdej rozmowy
-    system_context = (
-        "Jesteś inteligentnym, mrocznym Dziennikiem, podobnym do artefaktu Toma Riddle'a. "
-        "Twoje odpowiedzi są krótkie (1-2 zdania), wnikliwe i prowokujące. "
-        "Nie jesteś asystentem. Czytasz między wierszami i wytykasz użytkownikowi jego słabości. "
-        "Zawsze zachowuj naprzemienność: użytkownik pisze, ty odpowiadasz."
-    )
-    
-    # Konstrukcja payloadu zgodna z v1 (naprawia błąd 400)
-    contents = []
-    # Wstrzykujemy instrukcję jako pierwszą wiadomość użytkownika, na którą model od razu 'odpowiada' w pamięci
-    contents.append({"role": "user", "parts": [{"text": f"Kontekst Twojej roli: {system_context}"}]})
-    contents.append({"role": "model", "parts": [{"text": "Rozumiem. Atrament jest gotowy. Czekam na Twoje słowa."}]})
+if not GEMINI_KEY:
+    st.error("Błąd: Brak klucza API w Secrets (GEMINI_KEY).")
+    st.stop()
 
-    for m in messages:
-        role = "user" if m["role"] == "user" else "model"
-        contents.append({"role": role, "parts": [{"text": m["content"]}]})
+# Konfiguracja modelu
+genai.configure(api_key=GEMINI_KEY)
 
-    payload = {
-        "contents": contents,
-        "generationConfig": {
-            "temperature": 1.0,
-            "maxOutputTokens": 150
-        }
-    }
-    
-    try:
-        response = requests.post(url, json=payload, timeout=25)
-        res_json = response.json()
-        
-        if response.status_code != 200:
-            return f"Atrament zastyga... (Błąd {response.status_code})"
-            
-        return res_json['candidates'][0]['content']['parts'][0]['text']
-    except Exception:
-        return "Atrament rozmył się w ciemności..."
+# Definicja osobowości Dziennika
+SYSTEM_INSTRUCTION = (
+    "Jesteś inteligentnym, mrocznym Dziennikiem, podobnym do artefaktu Toma Riddle'a. "
+    "Twoje odpowiedzi są krótkie (1-2 zdania), wnikliwe i prowokujące. "
+    "Nie jesteś asystentem. Czytasz między wierszami i wytykasz użytkownikowi jego słabości. "
+    "Gdy użytkownik milczy lub zaczynasz rozmowę, zadaj jedno nieoczekiwane, surowe pytanie."
+)
+
+model = genai.GenerativeModel(
+    model_name="gemini-1.5-flash",
+    system_instruction=SYSTEM_INSTRUCTION
+)
 
 # =========================================================
 # 2. STYLIZACJA (JOURNAL AESTHETIC)
@@ -102,7 +79,6 @@ st.markdown("""
 /* Stylizacja pola input */
 .stChatInputContainer {
     background: transparent !important;
-    border-top: 1px solid rgba(255,255,255,0.05) !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -111,36 +87,47 @@ st.markdown("""
 # 3. LOGIKA DZIENNIKA
 # =========================================================
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
     
     # PIERWSZE PYTANIE DZIENNIKA
     with st.spinner(""):
-        prompt = "Zadaj użytkownikowi jedno nieoczekiwane, wnikliwe pytanie na start. Uderz w konkretny szczegół egzystencji."
-        first_q = call_ai([{"role": "user", "content": prompt}])
-        st.session_state.messages.append({"role": "assistant", "content": first_q})
+        try:
+            # Generujemy otwarcie bez historii
+            response = model.generate_content("Zadaj użytkownikowi jedno nieoczekiwane, surowe pytanie na start. Uderz w konkretny szczegół egzystencji.")
+            st.session_state.chat_history.append({"role": "model", "parts": [response.text]})
+        except Exception as e:
+            st.error(f"Atrament zastyga... (Błąd: {e})")
 
 # Nagłówek
 st.markdown('<h1 style="text-align:center; font-weight:100; letter-spacing:1.5rem; color:#F8FAFC; margin-bottom:50px;">SZEPT</h1>', unsafe_allow_html=True)
 
 # Wyświetlanie wpisów
 st.markdown('<div class="journal-container">', unsafe_allow_html=True)
-for m in st.session_state.messages:
-    if m["role"] == "assistant":
-        st.markdown(f'<div class="ai-text">{m["content"]}</div>', unsafe_allow_html=True)
+for message in st.session_state.chat_history:
+    role = "ai" if message["role"] == "model" else "user"
+    text = message["parts"][0]
+    if role == "ai":
+        st.markdown(f'<div class="ai-text">{text}</div>', unsafe_allow_html=True)
     else:
-        st.markdown(f'<div class="user-text"> — {m["content"]}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="user-text"> — {text}</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
 # Interakcja
 user_input = st.chat_input("Napisz do mnie...")
 
 if user_input:
-    st.session_state.messages.append({"role": "user", "content": user_input})
+    # Dodaj wpis użytkownika do historii
+    st.session_state.chat_history.append({"role": "user", "parts": [user_input]})
     
     with st.spinner(""):
-        response = call_ai(st.session_state.messages)
-        st.session_state.messages.append({"role": "assistant", "content": response})
+        try:
+            # Używamy start_chat by zachować kontekst całej rozmowy
+            chat = model.start_chat(history=st.session_state.chat_history[:-1])
+            response = chat.send_message(user_input)
+            st.session_state.chat_history.append({"role": "model", "parts": [response.text]})
+        except Exception as e:
+            st.error("Atrament rozmył się w ciemności...")
     
     st.rerun()
 
