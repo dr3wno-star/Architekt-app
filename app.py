@@ -7,7 +7,7 @@ from google.cloud import firestore
 from google.oauth2 import service_account
 
 # =========================================================
-# 1. KONFIGURACJA I FIREBASE (FIRESTORE)
+# 1. KONFIGURACJA I FIREBASE
 # =========================================================
 
 st.set_page_config(
@@ -17,26 +17,58 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Inicjalizacja bazy danych Firestore z secrets
 @st.cache_resource
 def init_db():
     try:
-        # Parsowanie danych konta serwisowego z secrets
         creds_info = json.loads(st.secrets["FIREBASE_SERVICE_ACCOUNT"])
         creds = service_account.Credentials.from_service_account_info(creds_info)
         db = firestore.Client(credentials=creds, project=creds_info['project_id'])
         return db
-    except Exception as e:
-        # Jeśli baza nie jest podłączona, aplikacja zadziała w trybie lokalnym
+    except:
         return None
 
 db = init_db()
-# ID Twojego projektu Firestore: szept-c417f
 app_id = "szept-c417f" 
 API_KEY = st.secrets.get("GEMINI_KEY", "")
 
 # =========================================================
-# 2. INTERFEJS I STYLIZACJA (DYNAMICZNE TŁO)
+# 2. SILNIK AI (POPRAWIONA KOMUNIKACJA)
+# =========================================================
+
+def call_gemini(prompt, system_prompt="", is_json=False):
+    if not API_KEY:
+        return None
+    
+    # Używamy modelu zalecanego w dokumentacji środowiska
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key={API_KEY}"
+    
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "systemInstruction": {"parts": [{"text": system_prompt}]},
+        "generationConfig": {
+            "temperature": 0.7,
+            "topP": 0.95,
+            "topK": 40,
+            "maxOutputTokens": 1024,
+        }
+    }
+    
+    if is_json:
+        payload["generationConfig"]["responseMimeType"] = "application/json"
+
+    for delay in [1, 2, 4]:
+        try:
+            response = requests.post(url, json=payload, timeout=30)
+            if response.status_code == 200:
+                result = response.json()
+                text = result.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                return text
+        except:
+            time.sleep(delay)
+    return None
+
+# =========================================================
+# 3. LOGIKA I STYLE
 # =========================================================
 
 MOOD_MAP = {
@@ -51,19 +83,12 @@ bg_color = MOOD_MAP.get(current_mood, "#10131A")
 st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,400;1,400&family=Inter:wght@100;200;300;400&display=swap');
-
 #MainMenu, footer, header {{visibility:hidden;}}
-
 .stApp {{
     background: radial-gradient(circle at top, {bg_color} 0%, #08080A 75%) !important;
     color: #E2E8F0;
-    transition: background 3s ease-in-out;
+    transition: background 3s ease;
 }}
-
-.brand {{ text-align: center; margin-top: 40px; margin-bottom: 40px; }}
-.brand-title {{ font-size: 3.5rem; font-weight: 100; letter-spacing: 1.2rem; color: #F8FAFC; animation: fadeIn 2s ease; }}
-.brand-sub {{ color: #475569; font-style: italic; font-family: 'Bodoni Moda', serif; letter-spacing: 0.2rem; font-size: 0.8rem; margin-top:10px; }}
-
 .question-card {{
     padding: 60px 40px;
     background: rgba(255,255,255,0.01);
@@ -71,32 +96,14 @@ st.markdown(f"""
     backdrop-filter: blur(20px);
     margin-bottom: 30px;
     text-align: center;
-    animation: slideUp 1.5s ease;
 }}
-
 .aura-box {{
-    padding: 80px 40px;
+    padding: 60px 30px;
     text-align: center;
     border: 1px solid rgba(255,255,255,0.05);
-    background: rgba(255,255,255,0.015);
-    margin-top: 30px;
-    animation: fadeIn 3s ease;
-}}
-
-.echo-card {{
-    padding: 25px;
     background: rgba(255,255,255,0.01);
-    border-left: 1px solid rgba(255,255,255,0.05);
-    margin-bottom: 20px;
-    font-family: 'Bodoni Moda', serif;
-    font-style: italic;
-    color: #94A3B8;
-    line-height: 1.6;
+    margin-top: 20px;
 }}
-
-@keyframes fadeIn {{ from {{ opacity: 0; }} to {{ opacity: 1; }} }}
-@keyframes slideUp {{ from {{ opacity: 0; transform: translateY(20px); }} to {{ opacity: 1; transform: translateY(0); }} }}
-
 textarea {{
     background: transparent !important;
     border: none !important;
@@ -104,78 +111,48 @@ textarea {{
     color: #F8FAFC !important;
     text-align: center !important;
     font-size: 1.1rem !important;
-    transition: 0.5s !important;
 }}
-
 .stButton button {{
     width: 100%;
     background: transparent !important;
     border: 1px solid #1E293B !important;
     color: #475569 !important;
-    padding: 1rem !important;
-    border-radius: 0px !important;
     letter-spacing: 0.3rem;
-    transition: 0.4s;
     text-transform: uppercase;
-    font-size: 0.75rem;
 }}
-
-.stButton button:hover {{
-    border-color: #F8FAFC !important;
-    color: white !important;
+.echo-card {{
+    padding: 20px;
+    background: rgba(255,255,255,0.02);
+    border-left: 1px solid rgba(255,255,255,0.1);
+    margin-bottom: 15px;
+    font-family: 'Bodoni Moda', serif;
+    font-style: italic;
 }}
 </style>
 """, unsafe_allow_html=True)
 
 # =========================================================
-# 3. SILNIK AI (GEMINI)
+# 4. FUNKCJE POMOCNICZE BAZY
 # =========================================================
 
-def call_gemini(prompt, system_prompt="", is_json=False):
-    if not API_KEY: return None
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key={API_KEY}"
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "systemInstruction": {"parts": [{"text": system_prompt}]},
-        "generationConfig": {"responseMimeType": "application/json" if is_json else "text/plain"}
-    }
-    for delay in [1, 2, 4]:
-        try:
-            response = requests.post(url, json=payload, timeout=20)
-            if response.status_code == 200:
-                return response.json().get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-        except: time.sleep(delay)
-    return None
-
-# =========================================================
-# 4. LOGIKA SALI ECHO (PERSYSTENCJA DANYCH)
-# =========================================================
-
-def save_whisper(text, aura_name, scenario):
+def save_to_db(text, aura, scenario):
     if not db: return
     try:
-        # Path: /artifacts/{app_id}/public/data/whispers
-        collection_ref = db.collection('artifacts').document(app_id).collection('public').document('data').collection('whispers')
-        collection_ref.add({
-            "text": text,
-            "aura": aura_name,
-            "scenario": scenario,
-            "timestamp": firestore.SERVER_TIMESTAMP
+        db.collection('artifacts').document(app_id).collection('public').document('data').collection('whispers').add({
+            "text": text, "aura": aura, "scenario": scenario, "timestamp": firestore.SERVER_TIMESTAMP
         })
-    except Exception: pass
+    except: pass
 
-def fetch_echos(scenario):
+def get_from_db(scenario):
     if not db: return []
     try:
-        # Pobieramy dokumenty z pasującym scenariuszem
         docs = db.collection('artifacts').document(app_id).collection('public').document('data').collection('whispers').stream()
-        results = [d.to_dict() for d in docs if d.to_dict().get('scenario') == scenario]
-        # Zwracamy maksymalnie 3 losowe szepty
-        return random.sample(results, min(len(results), 3))
-    except Exception: return []
+        matches = [d.to_dict() for d in docs if d.to_dict().get('scenario') == scenario]
+        return random.sample(matches, min(len(matches), 3))
+    except: return []
 
 # =========================================================
-# 5. GŁÓWNY FLOW APLIKACJI
+# 5. PRZEBIEG RYTUAŁU
 # =========================================================
 
 if "step" not in st.session_state: st.session_state.step = 0
@@ -183,82 +160,68 @@ if "answers" not in st.session_state: st.session_state.answers = []
 if "finished" not in st.session_state: st.session_state.finished = False
 if "scenario" not in st.session_state: st.session_state.scenario = None
 
-st.markdown('<div class="brand"><div class="brand-title">SZEPT</div><div class="brand-sub">architektura wspólnego echa</div></div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align:center; margin-top:40px;"><h1 style="font-weight:100; letter-spacing:1rem;">SZEPT</h1><p style="color:#475569; font-style:italic; font-family:\'Bodoni Moda\', serif;">sala wspólnego echa</p></div>', unsafe_allow_html=True)
 
 if not st.session_state.finished:
     if "questions" not in st.session_state:
-        st.session_state.questions = [random.choice([
-            "Z czym dziś przychodzisz do tej ciszy?",
-            "Co dominuje w Twoich myślach w tej chwili?",
-            "Jakie jedno słowo najlepiej opisuje Twój dzień?"
-        ])]
+        st.session_state.questions = ["Z czym dziś przychodzisz do tej ciszy?"]
     
     q = st.session_state.questions[st.session_state.step]
-    st.markdown(f'<div class="question-card"><div style="font-size:1.4rem; font-weight:100; letter-spacing:0.05rem;">{q}</div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="question-card"><div style="font-size:1.3rem; font-weight:200;">{q}</div></div>', unsafe_allow_html=True)
 
-    with st.form("ritual_form", clear_on_submit=True):
-        ans = st.text_area("", height=150, placeholder="Twoje słowa mają znaczenie...")
+    with st.form("whisper_form", clear_on_submit=True):
+        ans = st.text_area("", height=150, placeholder="Twoje słowa...")
         _, c2, _ = st.columns([1,1,1])
         if c2.form_submit_button("UWOLNIJ SZEPT"):
             if ans.strip():
                 st.session_state.answers.append(ans)
                 if st.session_state.step == 0:
-                    with st.spinner("Analiza tonu..."):
-                        sc = call_gemini(f"Wybierz jedno: spokój, ciekawość, zmęczenie, kontakt, introspekcja, lekkość, chaos. Odpowiedź: {ans}")
+                    with st.spinner("Wsłuchiwanie się..."):
+                        sc = call_gemini(f"Wybierz jedno słowo: spokój, ciekawość, zmęczenie, kontakt, introspekcja, lekkość, chaos. Odpowiedź użytkownika: {ans}")
                         st.session_state.scenario = sc.strip().lower() if sc else "introspekcja"
-                        # Generowanie pytań na żywo pod scenariusz
-                        q_raw = call_gemini(f"Wygeneruj dwa krótkie, głębokie pytania dla osoby w stanie: {st.session_state.scenario}. Rozdziel średnikiem.")
+                        q_raw = call_gemini(f"Wygeneruj dwa krótkie pytania dla stanu: {st.session_state.scenario}. Rozdziel je średnikiem.")
                         if q_raw:
                             st.session_state.questions.extend([x.strip() for x in q_raw.split(";")][:2])
                         else:
-                            st.session_state.questions.extend(["Co czujesz w głębi?", "Dokąd prowadzi Cię ta myśl?"])
+                            st.session_state.questions.extend(["Co czujesz teraz?", "Dokąd prowadzi ta myśl?"])
                 
-                if st.session_state.step < 2: 
+                if st.session_state.step < 2:
                     st.session_state.step += 1
-                else: 
+                else:
                     st.session_state.finished = True
                 st.rerun()
 
 else:
-    # --- ETAP WYNIKU I SALI ECHO ---
+    # ANALIZA KOŃCOWA
     if "current_aura" not in st.session_state:
-        with st.spinner("Splatanie Twojego echa..."):
-            system = 'Zwróć JSON: {"aura": "poetycka nazwa", "quote": "mistyczna sentencja"}'
-            user = f"Analizuj rytuał: {st.session_state.answers}"
-            res = call_gemini(user, system, is_json=True)
+        with st.spinner("Architekt dekonstruuje Twój szept..."):
+            sys_prompt = "Jesteś poetą. Zwróć wyłącznie JSON: {\"aura\": \"nazwa\", \"quote\": \"sentencja\"}"
+            user_prompt = f"Analizuj te głosy: {st.session_state.answers}"
+            res_text = call_gemini(user_prompt, sys_prompt, is_json=True)
             try:
-                st.session_state.current_aura = json.loads(res)
-                # Zapis do bazy danych
-                save_whisper(st.session_state.answers[-1], st.session_state.current_aura['aura'], st.session_state.scenario)
+                st.session_state.current_aura = json.loads(res_text)
+                save_to_db(st.session_state.answers[-1], st.session_state.current_aura['aura'], st.session_state.scenario)
             except:
-                st.session_state.current_aura = {"aura": "Nienazwane Echo", "quote": "Cisza jest najgłębszą z odpowiedzi."}
+                st.session_state.current_aura = {"aura": "Nienazwane Echo", "quote": "Cisza mówi najwięcej."}
 
     aura = st.session_state.current_aura
-    
     st.markdown(f"""
     <div class="aura-box">
-        <div style="font-size:0.6rem; letter-spacing:0.5rem; color:#475569; margin-bottom:20px;">TWOJA AURA</div>
-        <div style="font-size:3.5rem; font-family:'Bodoni Moda', serif; letter-spacing:0.1rem;">{aura['aura']}</div>
-        <div style="color:#64748B; font-style:italic; margin-top:30px; font-size:1.2rem;">"{aura['quote']}"</div>
+        <div style="font-size:0.6rem; letter-spacing:0.4rem; color:#475569;">TWOJA AURA</div>
+        <div style="font-size:3rem; font-family:'Bodoni Moda', serif;">{aura['aura']}</div>
+        <div style="color:#64748B; font-style:italic; margin-top:20px;">"{aura['quote']}"</div>
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown('<div style="text-align:center; margin-top:80px; color:#1E293B; letter-spacing:0.5rem; font-size:0.7rem;">SALA ECHO</div>', unsafe_allow_html=True)
-    
-    with st.spinner("Wsłuchiwanie się w głosy innych..."):
-        echos = fetch_echos(st.session_state.scenario)
-        if echos:
-            for e in echos:
-                st.markdown(f"""
-                <div class="echo-card">
-                    <div style="font-size:0.6rem; letter-spacing:0.2rem; color:#334155; margin-bottom:5px;">{e["aura"].upper()}</div>
-                    "{e["text"]}"
-                </div>
-                """, unsafe_allow_html=True)
-        else:
-            st.markdown('<div style="text-align:center; margin-top:20px; font-style:italic; color:#334155;">Na razie panuje tu cisza. Jesteś pierwszym echem w tym nastroju.</div>', unsafe_allow_html=True)
+    # SALA ECHO
+    st.markdown('<div style="text-align:center; margin-top:50px; font-size:0.7rem; letter-spacing:0.4rem;">SALA ECHO</div>', unsafe_allow_html=True)
+    echos = get_from_db(st.session_state.scenario)
+    if echos:
+        for e in echos:
+            st.markdown(f'<div class="echo-card"><div style="font-size:0.6rem; color:#334155;">{e["aura"].upper()}</div>"{e["text"]}"</div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div style="text-align:center; color:#334155; margin-top:20px;">Cisza... Jesteś tu pierwszy.</div>', unsafe_allow_html=True)
 
-    st.markdown("<br><br>", unsafe_allow_html=True)
     if st.button("POWRÓĆ DO POCZĄTKU"):
         st.session_state.clear()
         st.rerun()
