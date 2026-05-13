@@ -2,17 +2,17 @@ import streamlit as st
 import google.generativeai as genai
 
 # =========================================================
-# 1. KONFIGURACJA I SILNIK (AUTODETEKCJA)
+# 1. KONFIGURACJA SILNIKA ANALIZY AURY
 # =========================================================
 
 st.set_page_config(page_title="SZEPT", page_icon="📖", layout="centered")
 
-# TWÓJ KLUCZ API - Wklej go tutaj
+# TWÓJ KLUCZ API (Wklej go między cudzysłów)
 API_KEY = "AIzaSyDCmJ-nxrYU3w1MSzPNij5KYd6r1Btfbog" 
 
 @st.cache_resource
-def get_working_model():
-    """Wyszukuje model dostępny dla Twojego klucza, by uniknąć 404."""
+def initialize_engine():
+    """Inicjalizuje połączenie i znajduje dostępny model."""
     try:
         genai.configure(api_key=API_KEY)
         for m in genai.list_models():
@@ -22,35 +22,37 @@ def get_working_model():
     except:
         return None
 
-WORKING_MODEL_NAME = get_working_model()
+WORKING_MODEL = initialize_engine()
 
-def szept_engine(history):
-    if not WORKING_MODEL_NAME:
-        return "Błąd: Twoja nicość nie ma głosu (Brak dostępnych modeli)."
+def analyze_aura(history):
+    if not WORKING_MODEL:
+        return "System nie widzi Twojej aury. Sprawdź klucz API."
     
     try:
-        model = genai.GenerativeModel(WORKING_MODEL_NAME)
-        # PERSONA: Cyniczny i inteligentny obserwator
+        model = genai.GenerativeModel(WORKING_MODEL)
+        
+        # DEFINICJA OSOBOWOŚCI: Zimny Analityk Aury
         persona = (
-            "Jesteś mrocznym, inteligentnym Dziennikiem. Nie pomagasz. "
-            "Podważasz pewność siebie użytkownika. Odpowiadaj krótko (max 15 słów), "
-            "cynicznie i analizuj ukryte lęki. Używaj metafor cienia i atramentu. "
-            "Nie używaj emotikon."
+            "Jesteś Dziennikiem, który przeprowadza zimną analizę psychologiczną (Cold Reading). "
+            "Nie bełkoczesz o mroku i nicości. Badasz 'aurę' użytkownika na podstawie jego słów. "
+            "Twoim zadaniem jest ocenić jego obecny stan: agresję, lęk, arogancję lub zagubienie. "
+            "Mów o pęknięciach w jego postawie, ciężarze emocjonalnym i barwie intencji. "
+            "Bądź bezlitosny, rzeczowy i konkretny. Maksymalnie 15 słów. Żadnych ozdobników."
         )
         
-        # Przygotowanie kontekstu dla modelu
-        prompt_parts = [persona]
+        # Budowanie kontekstu dla Gemini
+        context = f"SYSTEM: {persona}\n\n"
         for msg in history:
-            prefix = "Użytkownik: " if msg["role"] == "user" else "Dziennik: "
-            prompt_parts.append(f"{prefix}{msg['content']}")
+            role = "Użytkownik" if msg["role"] == "user" else "Dziennik"
+            context += f"{role}: {msg['content']}\n"
             
-        response = model.generate_content("\n".join(prompt_parts))
+        response = model.generate_content(context)
         return response.text
     except Exception as e:
-        return f"Atrament zastyga w połowie słowa... ({str(e)})"
+        return f"Aura zbyt gęsta, by ją przejrzeć... ({str(e)})"
 
 # =========================================================
-# 2. ESTETYKA (MROCZNY DESIGN)
+# 2. DESIGN (ESTETYKA MINIMALIZMU)
 # =========================================================
 
 st.markdown("""
@@ -61,75 +63,79 @@ st.markdown("""
     
     .stApp { 
         background-color: #050505 !important; 
-        color: #d1d1d1; 
+        color: #e0e0e0; 
     }
     
-    .dziennik-text { 
+    .journal-entry { 
         font-family: 'Bodoni Moda', serif; 
         font-size: 1.5rem; 
         color: #ffffff; 
-        margin-bottom: 2.5rem; 
-        border-left: 1px solid #333; 
+        margin-bottom: 3rem; 
+        border-left: 1px solid #444; 
         padding-left: 25px; 
         line-height: 1.6;
-        animation: fadeIn 3s ease-in;
+        animation: emerge 2.5s ease-out;
     }
     
-    .moje-slowa { 
+    .user-echo { 
         font-family: 'Inter', sans-serif;
         font-style: italic; 
         color: #555; 
-        margin-bottom: 1.2rem; 
+        margin-bottom: 1.5rem; 
         text-align: right; 
         padding-right: 20px;
         font-weight: 200;
     }
 
-    @keyframes fadeIn {
-        0% { opacity: 0; filter: blur(5px); }
-        100% { opacity: 1; filter: blur(0px); }
+    @keyframes emerge {
+        0% { opacity: 0; filter: blur(8px); transform: translateY(5px); }
+        100% { opacity: 1; filter: blur(0px); transform: translateY(0px); }
     }
 
-    /* Stylizacja inputa */
+    /* Ukrycie obramowania inputa dla czystego efektu */
     .stChatInputContainer {
-        padding-bottom: 50px;
+        border-top: 1px solid #111 !important;
+        background-color: transparent !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # =========================================================
-# 3. LOGIKA ROZMOWY
+# 3. INTERFEJS I LOGIKA
 # =========================================================
 
-st.markdown('<h1 style="text-align:center; font-weight:100; letter-spacing:1.5rem; margin-top:50px; color:#222;">SZEPT</h1>', unsafe_allow_html=True)
+st.markdown('<h1 style="text-align:center; font-weight:100; letter-spacing:1.5rem; margin-top:60px; color:#1a1a1a;">SZEPT</h1>', unsafe_allow_html=True)
 
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = [
-        {"role": "assistant", "content": "Czy boisz się tego, co o Tobie wiem?"}
+if "journal_state" not in st.session_state:
+    st.session_state.journal_state = [
+        {"role": "assistant", "content": "Czy boisz się tego, co Twoja aura mówi o Tobie dzisiaj?"}
     ]
 
-# Wyświetlanie historii
-for m in st.session_state.chat_history:
+# Renderowanie rozmowy
+for m in st.session_state.journal_state:
     if m["role"] == "assistant":
-        st.markdown(f'<div class="dziennik-text">{m["content"]}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="journal-entry">{m["content"]}</div>', unsafe_allow_html=True)
     else:
-        st.markdown(f'<div class="moje-slowa">{m["content"]} —</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="user-echo">{m["content"]} —</div>', unsafe_allow_html=True)
 
-# Wejście użytkownika
-user_input = st.chat_input("Wyznaj coś...")
+# Obsługa wejścia
+user_input = st.chat_input("Napisz coś, bym mógł Cię przejrzeć...")
 
 if user_input:
-    st.session_state.chat_history.append({"role": "user", "content": user_input})
+    st.session_state.journal_state.append({"role": "user", "content": user_input})
     with st.spinner(" "):
-        ai_response = szept_engine(st.session_state.chat_history)
-        st.session_state.chat_history.append({"role": "assistant", "content": ai_response})
+        analysis = analyze_aura(st.session_state.journal_state)
+        st.session_state.journal_state.append({"role": "assistant", "content": analysis})
     st.rerun()
 
-# Sidebar z diagnostyką (opcjonalnie do ukrycia)
+# Funkcje pomocnicze w sidebarze
 with st.sidebar:
-    st.markdown("---")
-    if WORKING_MODEL_NAME:
-        st.caption(f"Połączono z: {WORKING_MODEL_NAME}")
-    if st.button("SPAL STRONY"):
+    st.markdown("### Status Analizy")
+    if WORKING_MODEL:
+        st.success(f"Oczy otwarte ({WORKING_MODEL})")
+    else:
+        st.error("Dziennik jest ślepy (Brak modelu)")
+    
+    if st.button("RESETUJ AURĘ"):
         st.session_state.clear()
         st.rerun()
