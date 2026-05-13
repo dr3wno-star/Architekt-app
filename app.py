@@ -3,10 +3,9 @@ import google.generativeai as genai
 import random
 import time
 import json
-import os
 
 # =========================================================
-# KONFIGURACJA STRONY
+# KONFIGURACJA
 # =========================================================
 
 st.set_page_config(
@@ -17,7 +16,25 @@ st.set_page_config(
 )
 
 # =========================================================
-# CSS / DESIGN
+# GEMINI API
+# =========================================================
+
+API_KEY = "AIzaSyBfyfqZfLvfAa9vamqATwwnzvBHD25jmoc"
+
+@st.cache_resource
+def init_ai():
+
+    try:
+        genai.configure(api_key=API_KEY)
+        return genai.GenerativeModel("gemini-1.5-flash")
+
+    except:
+        return None
+
+model = init_ai()
+
+# =========================================================
+# STYL
 # =========================================================
 
 st.markdown("""
@@ -48,7 +65,7 @@ html, body, [class*="css"] {
     text-align: center;
     margin-top: 70px;
     margin-bottom: 60px;
-    animation: fadeIn 1.2s ease;
+    animation: fadeIn 1.5s ease;
 }
 
 .brand-title {
@@ -83,6 +100,14 @@ html, body, [class*="css"] {
     font-weight: 300;
 }
 
+.progress {
+    text-align: center;
+    color: #334155;
+    margin-bottom: 15px;
+    letter-spacing: 0.2rem;
+    font-size: 0.7rem;
+}
+
 textarea {
     background: transparent !important;
     border: none !important;
@@ -101,7 +126,7 @@ textarea:focus {
     background: transparent !important;
     border: 1px solid #1E293B !important;
     color: #94A3B8 !important;
-    padding: 0.8rem 2rem !important;
+    padding: 0.85rem 2rem !important;
     border-radius: 0px !important;
     transition: 0.4s;
     letter-spacing: 0.15rem;
@@ -113,37 +138,44 @@ textarea:focus {
 }
 
 .aura-box {
-    padding: 55px;
+    padding: 65px 45px;
     text-align: center;
     border: 1px solid rgba(255,255,255,0.06);
     background: rgba(255,255,255,0.02);
-    animation: fadeIn 1s ease;
+    backdrop-filter: blur(15px);
+    animation: slowAppear 2s ease;
 }
 
 .aura-title {
     color: #64748B;
     font-size: 0.75rem;
-    letter-spacing: 0.3rem;
+    letter-spacing: 0.35rem;
     text-transform: uppercase;
 }
 
 .aura-name {
-    font-size: 2.7rem;
-    margin-top: 20px;
-    color: white;
+    font-size: 3.4rem;
+    margin-top: 25px;
+    color: #F8FAFC;
     font-family: 'Bodoni Moda', serif;
-    line-height: 1.3;
+    line-height: 1.2;
+    letter-spacing: 0.08rem;
+    animation: slowAppear 2s ease;
 }
 
 .aura-desc {
-    margin-top: 25px;
+    margin-top: 30px;
     color: #94A3B8;
-    line-height: 1.9rem;
-    font-size: 1rem;
+    line-height: 2rem;
+    font-size: 1.05rem;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+    animation: slowAppear 3s ease;
 }
 
 .traits {
-    margin-top: 35px;
+    margin-top: 40px;
 }
 
 .trait {
@@ -154,14 +186,16 @@ textarea:focus {
     color: #94A3B8;
     font-size: 0.85rem;
     letter-spacing: 0.05rem;
+    animation: slowAppear 3.5s ease;
 }
 
 .level {
-    margin-top: 40px;
+    margin-top: 45px;
     color: #475569;
     letter-spacing: 0.2rem;
     font-size: 0.75rem;
-    line-height: 1.8;
+    line-height: 1.9;
+    animation: slowAppear 4s ease;
 }
 
 .divider {
@@ -170,43 +204,34 @@ textarea:focus {
     border-color: #111827;
 }
 
-.progress {
-    text-align: center;
-    color: #334155;
-    margin-bottom: 15px;
-    letter-spacing: 0.2rem;
-    font-size: 0.7rem;
-}
-
 @keyframes fadeIn {
+
     from {
         opacity:0;
         transform: translateY(12px);
     }
+
     to {
         opacity:1;
         transform: translateY(0px);
     }
 }
 
+@keyframes slowAppear {
+
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0px);
+    }
+}
+
 </style>
 """, unsafe_allow_html=True)
-
-# =========================================================
-# GEMINI API
-# =========================================================
-
-API_KEY = "AIzaSyBfyfqZfLvfAa9vamqATwwnzvBHD25jmoc"
-
-@st.cache_resource
-def init_ai():
-    try:
-        genai.configure(api_key=API_KEY)
-        return genai.GenerativeModel("gemini-1.5-flash")
-    except:
-        return None
-
-model = init_ai()
 
 # =========================================================
 # PYTANIA
@@ -299,6 +324,9 @@ if "finished" not in st.session_state:
 if "questions" not in st.session_state:
     st.session_state.questions = random.sample(QUESTION_BANK, 3)
 
+if "current_answer" not in st.session_state:
+    st.session_state.current_answer = ""
+
 # =========================================================
 # AI ANALIZA
 # =========================================================
@@ -329,9 +357,9 @@ def analyze_with_ai(answers):
     }}
 
     ZASADY:
-    - klimat melancholijny
-    - subtelny
-    - spokojny
+    - melancholijnie
+    - subtelnie
+    - spokojnie
     - bez diagnoz
     - bez oceniania
     - krótko
@@ -354,24 +382,6 @@ def analyze_with_ai(answers):
 
     except:
         return random.choice(FALLBACK_AURAS)
-
-# =========================================================
-# EFEKT PISANIA
-# =========================================================
-
-def typewriter(text, speed=0.03):
-
-    placeholder = st.empty()
-
-    current = ""
-
-    for char in text:
-        current += char
-        placeholder.markdown(
-            f"<div class='aura-name'>{current}</div>",
-            unsafe_allow_html=True
-        )
-        time.sleep(speed)
 
 # =========================================================
 # HEADER
@@ -409,7 +419,8 @@ if not st.session_state.finished:
     answer = st.text_area(
         "",
         height=160,
-        placeholder="Pozwól myśli wybrzmieć..."
+        placeholder="Pozwól myśli wybrzmieć...",
+        key="current_answer"
     )
 
     c1, c2, c3 = st.columns([1,1,1])
@@ -421,6 +432,8 @@ if not st.session_state.finished:
             if answer.strip():
 
                 st.session_state.answers.append(answer)
+
+                st.session_state.current_answer = ""
 
                 if st.session_state.step < 2:
                     st.session_state.step += 1
@@ -451,9 +464,11 @@ else:
     </div>
     """, unsafe_allow_html=True)
 
-    typewriter(aura["aura"])
-
     st.markdown(f"""
+    <div class="aura-name">
+        {aura["aura"]}
+    </div>
+
     <div class="aura-desc">
         {aura["description"]}
     </div>
