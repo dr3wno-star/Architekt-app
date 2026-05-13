@@ -196,7 +196,7 @@ textarea:focus {
 # GEMINI API
 # =========================================================
 
-API_KEY = st.secrets["GEMINI_API_KEY"]
+API_KEY = st.secrets["AIzaSyBfyfqZfLvfAa9vamqATwwnzvBHD25jmoc"]
 
 @st.cache_resource
 def init_ai():
