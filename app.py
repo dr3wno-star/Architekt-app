@@ -1,11 +1,14 @@
+```python
 import streamlit as st
-import google.generativeai as genai
+import requests
 import random
 import time
 import json
+from google.cloud import firestore
+from google.oauth2 import service_account
 
 # =========================================================
-# KONFIGURACJA STRONY
+# KONFIGURACJA I FIREBASE (DATABASE)
 # =========================================================
 
 st.set_page_config(
@@ -15,358 +18,224 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# =========================================================
-# BEZPIECZEŃSTWO API
-# =========================================================
-# Aby to działało, dodaj klucz w pliku .streamlit/secrets.toml:
-# GEMINI_KEY = "TWOJ_KLUCZ_API"
+# Inicjalizacja Firestore (Zgodnie z Rule 1 & 3)
+# Zakładamy, że __firebase_config jest w st.secrets
+def init_db():
+    try:
+        # Przykładowa konfiguracja dla Streamlit Cloud / Secrets
+        # Wymaga ustawienia klucza serwisowego w secrets
+        creds_dict = json.loads(st.secrets["FIREBASE_SERVICE_ACCOUNT"])
+        creds = service_account.Credentials.from_service_account_info(creds_dict)
+        db = firestore.Client(credentials=creds, project=creds_dict['project_id'])
+        return db
+    except:
+        return None
 
+db = init_db()
+app_id = "szept-v2"
 API_KEY = st.secrets.get("GEMINI_KEY", "")
 
-@st.cache_resource
-def init_ai():
-    if not API_KEY:
-        return None
-    try:
-        genai.configure(api_key=API_KEY)
-        return genai.GenerativeModel("gemini-1.5-flash")
-    except Exception:
-        return None
-
-model = init_ai()
-
 # =========================================================
-# SESSION STATE
+# STYLIZACJA (SZEPT AESTHETIC)
 # =========================================================
 
-if "step" not in st.session_state:
-    st.session_state.step = 0
-if "answers" not in st.session_state:
-    st.session_state.answers = []
-if "finished" not in st.session_state:
-    st.session_state.finished = False
-if "scenario" not in st.session_state:
-    st.session_state.scenario = None
-if "questions" not in st.session_state:
-    FIRST_QUESTIONS = [
-        "Z czym przychodzisz dziś do tej przestrzeni?",
-        "Co dziś najbardziej zajmowało Twoją głowę?",
-        "Jak wyglądał Twój dzień od środka?",
-        "Jakiej energii najbardziej Ci dziś brakuje?",
-        "Co dziś najmocniej zostało z Tobą po całym dniu?"
-    ]
-    st.session_state.questions = [random.choice(FIRST_QUESTIONS)]
+def inject_ui(mood_color="#10131A"):
+    st.markdown(f"""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,400;1,400&family=Inter:wght@100;200;300;400&display=swap');
 
-# =========================================================
-# DYNAMICZNY STYL (CSS)
-# =========================================================
+    #MainMenu, footer, header {{visibility:hidden;}}
 
-# Kolory zależne od nastroju/scenariusza
-MOOD_COLORS = {
-    "spokój": "#0B1014",      # Głęboki granat/czerń
-    "ciekawość": "#0D1321",   # Nocne niebo
-    "zmęczenie": "#09090B",   # Absolutna czerń
-    "kontakt": "#16161D",     # Ciepły grafit
-    "introspekcja": "#101014",# Czysta czerń
-    "lekkość": "#141B24",     # Stalowy błękit
-    "chaos": "#1A1414",       # Czerń z domieszką burgundu
-    None: "#10131A"           # Domyślny
-}
-
-current_mood_bg = MOOD_COLORS.get(st.session_state.scenario, "#10131A")
-
-st.markdown(f"""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,400;0,500;1,400&family=Inter:wght@200;300;400;500&display=swap');
-
-/* Reset i Główne Tło */
-#MainMenu, footer, header {{visibility:hidden;}}
-
-.stApp {{
-    background: radial-gradient(circle at top, {current_mood_bg} 0%, #08080A 45%) !important;
-    color: #E2E8F0;
-    transition: background 3s ease-in-out;
-}}
-
-.block-container {{
-    padding-top: 2rem;
-    max-width: 760px;
-}}
-
-/* Branding */
-.brand {{
-    text-align: center;
-    margin-top: 50px;
-    margin-bottom: 40px;
-    animation: fadeIn 2s ease;
-}}
-
-.brand-title {{
-    font-size: 3.5rem;
-    font-weight: 200;
-    letter-spacing: 1.2rem;
-    color: #F8FAFC;
-    margin-bottom: 0;
-}}
-
-.brand-sub {{
-    margin-top: 8px;
-    color: #475569;
-    font-style: italic;
-    font-family: 'Bodoni Moda', serif;
-    letter-spacing: 0.2rem;
-    font-size: 0.9rem;
-}}
-
-/* Pytania i Formularz */
-.question-card {{
-    padding: 60px 40px;
-    border: 1px solid rgba(255,255,255,0.03);
-    background: rgba(255,255,255,0.01);
-    backdrop-filter: blur(20px);
-    margin-bottom: 30px;
-    border-radius: 2px;
-    text-align: center;
-}}
-
-.question-text {{
-    font-size: 1.45rem;
-    line-height: 2.2rem;
-    color: #CBD5E1;
-    font-weight: 300;
-    animation: typewriter 2s steps(40);
-    overflow: hidden;
-    white-space: normal;
-}}
-
-textarea {{
-    background: transparent !important;
-    border: none !important;
-    border-bottom: 1px solid #1E293B !important;
-    color: #F8FAFC !important;
-    text-align: center !important;
-    font-size: 1.1rem !important;
-    padding: 20px !important;
-    transition: 0.6s !important;
-}}
-
-textarea:focus {{
-    border-bottom: 1px solid #475569 !important;
-    box-shadow: none !important;
-    background: rgba(255,255,255,0.02) !important;
-}}
-
-.stButton button {{
-    width: 100%;
-    background: transparent !important;
-    border: 1px solid #1E293B !important;
-    color: #64748B !important;
-    padding: 0.9rem !important;
-    border-radius: 0px !important;
-    letter-spacing: 0.3rem;
-    transition: 0.5s;
-    text-transform: uppercase;
-    font-size: 0.75rem;
-}}
-
-.stButton button:hover {{
-    border-color: #94A3B8 !important;
-    color: white !important;
-    background: rgba(255,255,255,0.03) !important;
-}}
-
-/* Aura / Wynik */
-.aura-box {{
-    padding: 80px 45px;
-    text-align: center;
-    border: 1px solid rgba(255,255,255,0.05);
-    background: rgba(255,255,255,0.015);
-    animation: slowAppear 3s ease;
-}}
-
-.aura-name {{
-    font-size: 3.8rem;
-    color: #F8FAFC;
-    font-family: 'Bodoni Moda', serif;
-    margin: 25px 0;
-    letter-spacing: 0.1rem;
-}}
-
-.whisper-quote {{
-    margin: 35px auto;
-    font-style: italic;
-    color: #64748B;
-    font-family: 'Bodoni Moda', serif;
-    font-size: 1.25rem;
-    max-width: 80%;
-    line-height: 1.8;
-}}
-
-.trait {{
-    display: inline-block;
-    padding: 6px 16px;
-    margin: 6px;
-    border: 1px solid rgba(255,255,255,0.08);
-    color: #94A3B8;
-    font-size: 0.8rem;
-    letter-spacing: 0.1rem;
-    text-transform: lowercase;
-}}
-
-/* Animacje */
-@keyframes typewriter {{
-    from {{ opacity: 0; transform: translateY(5px); }}
-    to {{ opacity: 1; transform: translateY(0); }}
-}}
-
-@keyframes fadeIn {{
-    from {{ opacity: 0; }}
-    to {{ opacity: 1; }}
-}}
-
-@keyframes slowAppear {{
-    from {{ opacity: 0; transform: scale(0.98); }}
-    to {{ opacity: 1; transform: scale(1); }}
-}}
-
-</style>
-""", unsafe_allow_html=True)
-
-# =========================================================
-# LOGIKA AI
-# =========================================================
-
-def detect_scenario(first_answer):
-    SCENARIOS_LIST = ["spokój", "ciekawość", "zmęczenie", "kontakt", "introspekcja", "lekkość", "chaos"]
-    if not model: return random.choice(SCENARIOS_LIST)
-    
-    prompt = f"Analizuj odpowiedź: '{first_answer}'. Wybierz jeden kierunek z: {', '.join(SCENARIOS_LIST)}. Zwróć tylko jedno słowo."
-    try:
-        response = model.generate_content(prompt)
-        res = response.text.strip().lower()
-        return res if res in SCENARIOS_LIST else "introspekcja"
-    except:
-        return "introspekcja"
-
-def analyze_with_ai(answers, scenario):
-    if not model:
-        return {
-            "aura": "Ciche Echo",
-            "description": "Twoja obecność jest jak mgła nad taflą jeziora.",
-            "traits": ["cisza", "uważność"],
-            "next_path": "ścieżka cienia",
-            "whisper_level": 3,
-            "whisper_quote": "W milczeniu ukryta jest największa siła."
-        }
-
-    prompt = f"""
-    Jesteś poetą-psychologiem aplikacji SZEPT. 
-    Analizuj te głosy: {answers} (Kierunek: {scenario}).
-    Zwróć JSON:
-    {{
-      "aura": "krótka poetycka nazwa (np. Księżycowy Pył)",
-      "description": "subtelne zdanie opisu",
-      "traits": ["cecha1", "cecha2", "cecha3"],
-      "next_path": "nazwa kolejnego etapu",
-      "whisper_level": 1-5,
-      "whisper_quote": "jedna unikalna, mistyczna sentencja napisana dla tego użytkownika"
+    .stApp {{
+        background: radial-gradient(circle at top, {mood_color} 0%, #08080A 65%) !important;
+        color: #E2E8F0;
+        transition: background 3s ease;
     }}
-    Styl: Polski, elegancki, minimalistyczny.
-    """
+
+    .brand {{ text-align: center; margin-top: 40px; margin-bottom: 40px; }}
+    .brand-title {{ font-size: 3.5rem; font-weight: 100; letter-spacing: 1.2rem; color: #F8FAFC; }}
+    .brand-sub {{ color: #475569; font-style: italic; font-family: 'Bodoni Moda', serif; letter-spacing: 0.2rem; font-size: 0.8rem; }}
+
+    .question-card {{
+        padding: 40px;
+        background: rgba(255,255,255,0.01);
+        border: 1px solid rgba(255,255,255,0.03);
+        backdrop-filter: blur(15px);
+        margin-bottom: 30px;
+        text-align: center;
+    }}
+
+    .aura-box {{
+        padding: 60px 30px;
+        text-align: center;
+        border: 1px solid rgba(255,255,255,0.05);
+        background: rgba(255,255,255,0.01);
+        margin-bottom: 40px;
+        animation: fadeIn 2s ease;
+    }}
+
+    .echo-container {{
+        margin-top: 50px;
+        padding: 20px;
+        border-top: 1px solid rgba(255,255,255,0.05);
+    }}
+
+    .echo-card {{
+        padding: 20px;
+        background: rgba(255,255,255,0.02);
+        margin-bottom: 15px;
+        border-left: 1px solid #1E293B;
+        font-family: 'Bodoni Moda', serif;
+        font-style: italic;
+        color: #94A3B8;
+        font-size: 0.95rem;
+    }}
+
+    .echo-aura {{
+        font-size: 0.65rem;
+        letter-spacing: 0.2rem;
+        color: #475569;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+    }}
+
+    @keyframes fadeIn {{ from {{ opacity: 0; }} to {{ opacity: 1; }} }}
+    </style>
+    """, unsafe_allow_html=True)
+
+# =========================================================
+# KOMUNIKACJA AI
+# =========================================================
+
+def call_gemini(prompt, system_prompt=""):
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key={API_KEY}"
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "systemInstruction": {"parts": [{"text": system_prompt}]},
+        "generationConfig": {"responseMimeType": "application/json" if "JSON" in system_prompt else "text/plain"}
+    }
     try:
-        response = model.generate_content(prompt)
-        text = response.text.strip()
-        if "```json" in text:
-            text = text.split("```json")[1].split("```")[0]
-        return json.loads(text)
-    except:
-        return {"aura": "Nienazwane", "description": "Echo, które nie znalazło jeszcze formy.", "traits": ["niepewność"], "next_path": "powrót", "whisper_level": 1, "whisper_quote": "Pytania są ważniejsze niż odpowiedzi."}
+        response = requests.post(url, json=payload, timeout=20)
+        if response.status_code == 200:
+            return response.json().get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+    except: return None
+    return None
 
 # =========================================================
-# INTERFEJS RYTUAŁU
+# OPERACJE NA DANYCH (SALA ECHO)
 # =========================================================
 
-st.markdown("""
-<div class="brand">
-    <div class="brand-title">SZEPT</div>
-    <div class="brand-sub">konwersacja, która oddycha</div>
-</div>
-""", unsafe_allow_html=True)
+def save_whisper(whisper_text, aura_data, scenario):
+    if not db: return
+    # Rule 1: /artifacts/{appId}/public/data/{collectionName}
+    collection_ref = db.collection('artifacts').document(app_id).collection('public').document('data').collection('whispers')
+    collection_ref.add({
+        "whisper": whisper_text,
+        "aura": aura_data['aura'],
+        "scenario": scenario,
+        "timestamp": firestore.SERVER_TIMESTAMP
+    })
 
-SCENARIO_DATA = {
-    "spokój": ["Co pomaga Ci naprawdę zwolnić?", "W jakim miejscu czujesz największy wewnętrzny oddech?"],
-    "ciekawość": ["Jakiej rozmowy chciałbyś dziś doświadczyć?", "Co ostatnio najbardziej Cię zaintrygowało?"],
-    "zmęczenie": ["Co najbardziej odbiera Ci energię?", "Jak wyglądałby Twój idealny moment wyciszenia?"],
-    "kontakt": ["Jakiej obecności najbardziej Ci dziś brakuje?", "Co sprawia, że czujesz prawdziwe połączenie?"],
-    "introspekcja": ["Jaką część siebie pokazujesz najrzadziej?", "Która myśl wraca do Ciebie najczęściej w ciszy?"],
-    "lekkość": ["Co ostatnio wywołało u Ciebie uśmiech?", "Jak wygląda moment pełnej swobody?"],
-    "chaos": ["Co dziś było w Tobie najbardziej niespokojne?", "Za czym tęskni Twoja głowa, gdy wszystko cichnie?"]
-}
+def get_echos(scenario):
+    if not db: return []
+    # Rule 2: Fetch all and filter in memory to avoid complex queries
+    collection_ref = db.collection('artifacts').document(app_id).collection('public').document('data').collection('whispers')
+    docs = collection_ref.stream()
+    
+    all_whispers = []
+    for d in docs:
+        data = d.to_dict()
+        if data.get('scenario') == scenario:
+            all_whispers.append(data)
+    
+    # Zwróć 3 losowe z tego samego scenariusza
+    if len(all_whispers) > 3:
+        return random.sample(all_whispers, 3)
+    return all_whispers
+
+# =========================================================
+# GŁÓWNY FLOW
+# =========================================================
+
+if "step" not in st.session_state: st.session_state.step = 0
+if "answers" not in st.session_state: st.session_state.answers = []
+if "finished" not in st.session_state: st.session_state.finished = False
+if "scenario" not in st.session_state: st.session_state.scenario = None
+
+MOOD_MAP = {"spokój": "#0B1014", "ciekawość": "#0D1321", "zmęczenie": "#09090B", "kontakt": "#16161D", "introspekcja": "#101014", "lekkość": "#141B24", "chaos": "#1A1414"}
+inject_ui(MOOD_MAP.get(st.session_state.scenario, "#10131A"))
+
+st.markdown('<div class="brand"><div class="brand-title">SZEPT</div><div class="brand-sub">sala wspólnego echa</div></div>', unsafe_allow_html=True)
 
 if not st.session_state.finished:
-    current_q = st.session_state.questions[st.session_state.step]
+    # (Logika pytań pozostaje taka sama jak w poprzedniej wersji)
+    if "questions" not in st.session_state:
+        st.session_state.questions = [random.choice(["Z czym dziś przychodzisz?", "Co dominuje w Twojej ciszy?", "Jakie słowo Cię dziś prowadzi?"])]
     
-    st.markdown(f"""
-    <div style="text-align:center; color:#334155; font-size:0.7rem; letter-spacing:0.3rem; margin-bottom:15px;">
-        ETAP {st.session_state.step + 1} / 3
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown(f"""
-    <div class="question-card">
-        <div class="question-text">{current_q}</div>
-    </div>
-    """, unsafe_allow_html=True)
+    q = st.session_state.questions[st.session_state.step]
+    st.markdown(f'<div class="question-card"><div style="font-size:1.3rem; font-weight:200;">{q}</div></div>', unsafe_allow_html=True)
 
-    with st.form("whisper_form", clear_on_submit=True):
-        answer = st.text_area("", height=180, placeholder="Pozwól myślom płynąć...")
-        _, c2, _ = st.columns([1, 1.2, 1])
-        with c2:
-            submitted = st.form_submit_button("UWOLNIJ SZEPT")
-        
-        if submitted and answer.strip():
-            st.session_state.answers.append(answer)
-            
-            if st.session_state.step == 0:
-                with st.spinner("Wsłuchiwanie się w ton..."):
-                    scenario = detect_scenario(answer)
-                    st.session_state.scenario = scenario
-                    st.session_state.questions.extend(SCENARIO_DATA.get(scenario, SCENARIO_DATA["introspekcja"]))
-            
-            if st.session_state.step < 2:
-                st.session_state.step += 1
-            else:
-                st.session_state.finished = True
-            st.rerun()
-
-# =========================================================
-# WYNIK (AURA)
-# =========================================================
+    with st.form("ritual"):
+        ans = st.text_area("", height=150, placeholder="Twoje słowa...")
+        _, c2, _ = st.columns([1,1,1])
+        if c2.form_submit_button("UWOLNIJ"):
+            if ans.strip():
+                st.session_state.answers.append(ans)
+                if st.session_state.step == 0:
+                    scenario = call_gemini(f"Wybierz: spokój, ciekawość, zmęczenie, kontakt, introspekcja, lekkość, chaos. Odpowiedź: {ans}")
+                    st.session_state.scenario = scenario.strip().lower() if scenario else "introspekcja"
+                    q_raw = call_gemini(f"Dwa pytania dla stanu: {st.session_state.scenario}. Rozdziel średnikiem.")
+                    st.session_state.questions.extend([x.strip() for x in q_raw.split(";")][:2] if q_raw else ["Co czujesz?", "Dokąd zmierzasz?"])
+                
+                if st.session_state.step < 2: st.session_state.step += 1
+                else: st.session_state.finished = True
+                st.rerun()
 
 else:
-    with st.spinner("Architekt splata Twoje echa..."):
-        time.sleep(2.5)
-        aura = analyze_with_ai(st.session_state.answers, st.session_state.scenario)
+    # ETAP WYNIKU I SALI ECHO
+    if "current_aura" not in st.session_state:
+        with st.spinner("Splatanie echa..."):
+            system_p = 'Zwróć JSON: {"aura": "nazwa", "desc": "zdanie", "traits": [], "quote": "cytat"}'
+            user_p = f"Analiza: {st.session_state.answers}"
+            res = call_gemini(user_p, system_p)
+            try:
+                st.session_state.current_aura = json.loads(res)
+                # ZAPIS DO BAZY (Sala Echo)
+                save_whisper(st.session_state.answers[-1], st.session_state.current_aura, st.session_state.scenario)
+            except:
+                st.session_state.current_aura = {"aura": "Bez imienia", "desc": "Nienazwana obecność.", "traits": ["cisza"], "quote": "..."}
 
+    aura = st.session_state.current_aura
+    
+    # Wyświetlenie Aury
     st.markdown(f"""
     <div class="aura-box">
-        <div style="color: #64748B; font-size: 0.7rem; letter-spacing: 0.4rem; text-transform: uppercase;">Twoja Aura</div>
-        <div class="aura-name">{aura.get('aura', '---')}</div>
-        <div class="aura-desc">{aura.get('description', '')}</div>
-        <div class="whisper-quote">"{aura.get('whisper_quote', '')}"</div>
-        <div style="margin-top: 30px;">
-            {' '.join([f'<span class="trait">{t}</span>' for t in aura.get('traits', [])])}
-        </div>
-        <div style="margin-top: 50px; color: #334155; font-size: 0.75rem; letter-spacing: 0.2rem;">
-            WHISPER LEVEL • {aura.get('whisper_level', 1)}<br><br>
-            ŚCIEŻKA • {aura.get('next_path', '').upper()}
-        </div>
+        <div style="font-size:0.6rem; letter-spacing:0.4rem; color:#475569;">TWOJA AURA</div>
+        <div style="font-size:3.2rem; font-family:'Bodoni Moda', serif;">{aura['aura']}</div>
+        <div style="color:#64748B; font-style:italic;">"{aura['quote']}"</div>
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    _, c2, _ = st.columns([1,1,1])
-    with c2:
-        if st.button("ROZPOCZNIJ OD NOWA"):
-            st.session_state.clear()
-            st.rerun()
+    # SALA ECHO - Połączenie z innymi
+    st.markdown('<div class="history-label" style="text-align:center; margin-top:40px;">SALA ECHO</div>', unsafe_allow_html=True)
+    st.markdown('<div style="text-align:center; font-size:0.8rem; color:#475569; margin-bottom:20px;">Inni, którzy dzielą Twój kierunek:</div>', unsafe_allow_html=True)
+    
+    echos = get_echos(st.session_state.scenario)
+    
+    if echos:
+        for echo in echos:
+            st.markdown(f"""
+            <div class="echo-card">
+                <div class="echo-aura">{echo['aura']}</div>
+                "{echo['whisper']}"
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.markdown('<div style="text-align:center; font-style:italic; color:#334155;">Na razie panuje tu cisza...</div>', unsafe_allow_html=True)
+
+    if st.button("POWRÓĆ DO CISZY"):
+        st.session_state.clear()
+        st.rerun()
+
+```
+    
