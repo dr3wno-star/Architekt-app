@@ -1,124 +1,178 @@
 import streamlit as st
-import random
+import requests
+import json
 
 # =========================================================
-# 1. INICJALIZACJA SESJI (MUSI BYĆ NA POCZĄTKU)
+# 1. KONFIGURACJA SYSTEMU I API
 # =========================================================
 
-if "step" not in st.session_state:
-    st.session_state.step = 0
+st.set_page_config(
+    page_title="SZEPT",
+    page_icon="📖",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
 
-if "scores" not in st.session_state:
-    st.session_state.scores = {"PRAGMATYK": 0, "STRAZNIK": 0, "DUCH": 0, "WEDROWIEC": 0}
+# Pobieranie klucza z Secrets
+GEMINI_KEY = st.secrets.get("GEMINI_KEY")
 
-# =========================================================
-# 2. BAZA WYNIKÓW
-# =========================================================
+def call_ai(messages, sys_instruction):
+    if not GEMINI_KEY:
+        return "Błąd: Klucz API nie został skonfigurowany w Secrets."
+    
+    # Korzystamy z wersji v1beta, która najlepiej obsługuje system_instruction
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_KEY}"
+    
+    # Mapowanie ról na format Gemini
+    contents = []
+    for m in messages:
+        role = "user" if m["role"] == "user" else "model"
+        contents.append({"role": role, "parts": [{"text": m["content"]}]})
 
-AURA_DEFINITIONS = {
-    "PRAGMATYK": {
-        "tytul": "Aura Stalowa (Pragmatyk)",
-        "opis": "Twoja energia jest konkretna i osadzona w materii. Nie marnujesz sił na iluzje. Budujesz świat z faktów i logiki. Jesteś fundamentem, na którym inni mogą polegać, ale rzadko pozwalasz sobie na słabość.",
-        "pytanie": "Czy w pogoni za skutecznością nie zgubiłeś radości z samego procesu?"
-    },
-    "STRAZNIK": {
-        "tytul": "Aura Dębowa (Strażnik)",
-        "opis": "Twoja aura jest ciężka, stara i nasiąknięta historią. Jesteś jak dębowy mebel w opuszczonym domu – przetrwałeś wiele, a kurz tylko dodaje Ci szlachetności. Cenisz lojalność i trwałość ponad wszystko.",
-        "pytanie": "Kogo wpuścisz za swoje ciężkie, dębowe drzwi?"
-    },
-    "DUCH": {
-        "tytul": "Aura Eteryczna (Duch)",
-        "opis": "Jesteś jak mgła lub płomień świecy. Widzisz to, czego inni nie dostrzegają. Twoja wrażliwość jest Twoją największą siłą, ale też Twoim przekleństwem. Żyjesz w świecie symboli i przeczuć.",
-        "pytanie": "Jak bardzo boisz się rozproszenia przez zbyt silne światło rzeczywistości?"
-    },
-    "WEDROWIEC": {
-        "tytul": "Aura Złota (Wędrowiec)",
-        "opis": "Twoja energia jest w ciągłym ruchu. Jesteś ciepłem zachodzącego słońca i ciekawością dziecka. Szukasz relacji i głębokich połączeń z ludźmi, ale Twoja natura jest zmienna i trudna do uchwycenia.",
-        "pytanie": "Gdzie jest Twoje miejsce, gdy gasną wszystkie światła?"
+    payload = {
+        "contents": contents,
+        "systemInstruction": {
+            "parts": [{"text": sys_instruction}]
+        },
+        "generationConfig": {
+            "temperature": 1.0,
+            "maxOutputTokens": 150,
+            "topP": 0.95
+        }
     }
-}
+    
+    try:
+        response = requests.post(url, json=payload, timeout=25)
+        res_json = response.json()
+        
+        if response.status_code != 200:
+            return f"Atrament zastyga... (Błąd {response.status_code})"
+            
+        return res_json['candidates'][0]['content']['parts'][0]['text']
+    except Exception:
+        return "Atrament rozmył się w ciemności..."
 
 # =========================================================
-# 3. BAZA PYTAŃ
+# 2. INTERFEJS I STYLIZACJA (SZEPT AESTHETIC)
 # =========================================================
-
-QUESTIONS_DATABASE = [
-    {
-        "pytanie": "Gdy budzisz się w nocy i panuje absolutna cisza, co słyszysz?",
-        "opcje": [
-            ("Pracę urządzeń i szum miasta.", "PRAGMATYK"),
-            ("Bicie własnego serca.", "STRAZNIK"),
-            ("Ciężar powietrza i pustkę pokoju.", "DUCH"),
-            ("Oddech kogoś bliskiego.", "WEDROWIEC"),
-            ("Echo myśli, których nie wypowiedziałem.", "DUCH"),
-            ("Nic, po prostu czekam na sen.", "PRAGMATYK")
-        ]
-    },
-    {
-        "pytanie": "Wybierz materiał, z którego mogłaby być zbudowana Twoja tarcza:",
-        "opcje": [
-            ("Hartowana stal – chłodna i pewna.", "PRAGMATYK"),
-            ("Ciemne, surowe drewno – dębowe i silne.", "STRAZNIK"),
-            ("Gęsta mgła – nieuchwytna.", "DUCH"),
-            ("Złoto – cenna i plastyczna.", "WEDROWIEC"),
-            ("Kamień – niewzruszony.", "STRAZNIK"),
-            ("Przezroczyste szkło – dystans.", "PRAGMATYK")
-        ]
-    },
-    {
-        "pytanie": "Jakie światło najlepiej definiuje Twój obecny stan?",
-        "opcje": [
-            ("Ostre, biurowe światło.", "PRAGMATYK"),
-            ("Płomień pojedynczej świecy.", "STRAZNIK"),
-            ("Księżycowa poświata.", "DUCH"),
-            ("Ciepły blask zachodzącego słońca.", "WEDROWIEC"),
-            ("Światło tuż przed burzą.", "DUCH"),
-            ("Zimne, niebieskie światło ekranu.", "PRAGMATYK")
-        ]
-    }
-]
-
-# =========================================================
-# 4. DESIGN I LOGIKA
-# =========================================================
-
-st.set_page_config(page_title="SZEPT", layout="centered")
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@1,400&family=Inter:wght@100;300&display=swap');
-    #MainMenu, footer, header {visibility:hidden;}
-    .stApp { background-color: #050505 !important; color: #d1d1d1; }
-    .question-title { font-family: 'Bodoni Moda', serif; font-size: 2rem; text-align: center; margin-top: 50px; margin-bottom: 40px; color: #fff; font-style: italic; }
-    .stButton>button { background-color: #0a0a0a; border: 1px solid #222; color: #888; width: 100%; text-align: left; padding: 15px 25px; margin-bottom: 10px; font-family: 'Inter', sans-serif; transition: 0.4s; }
-    .stButton>button:hover { border-color: #555; color: #fff; transform: translateX(5px); }
-    .result-title { font-family: 'Bodoni Moda', serif; font-size: 2.2rem; color: #fff; text-align: center; margin-top: 80px; }
-    .result-desc { font-family: 'Inter', sans-serif; font-size: 1.1rem; text-align: center; color: #aaa; line-height: 1.8; margin: 20px 0; }
-    .result-question { font-family: 'Bodoni Moda', serif; font-size: 1.5rem; color: #fff; text-align: center; font-style: italic; border-top: 1px solid #222; padding-top: 20px; }
+@import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@1,400&family=Inter:wght@200;300;400&display=swap');
+
+/* Ukrycie elementów Streamlit */
+#MainMenu, footer, header {visibility:hidden;}
+
+/* Tło i główny kontener */
+.stApp {
+    background: #0A0A0C !important;
+    color: #D1D5DB;
+}
+
+/* Stylizacja strony dziennika */
+.journal-container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.ai-text {
+    color: #F8FAFC;
+    font-family: 'Bodoni Moda', serif;
+    font-size: 1.4rem;
+    line-height: 1.6;
+    margin-bottom: 45px;
+    opacity: 0;
+    animation: fadeIn 2s forwards;
+}
+
+.user-text {
+    color: #475569;
+    font-family: 'Inter', sans-serif;
+    font-style: italic;
+    font-size: 0.95rem;
+    margin-bottom: 15px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    padding-bottom: 5px;
+    text-align: right;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Stylizacja inputu */
+.stChatInputContainer {
+    padding-bottom: 50px !important;
+    background: transparent !important;
+}
+
+input {
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 1px solid #1E293B !important;
+    color: #F8FAFC !important;
+    font-size: 1.1rem !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
-# FAZA PYTAŃ
-if st.session_state.step < len(QUESTIONS_DATABASE):
-    q = QUESTIONS_DATABASE[st.session_state.step]
-    st.markdown(f'<div class="question-title">{q["pytanie"]}</div>', unsafe_allow_html=True)
-    
-    for text, archetyp in q["opcje"]:
-        if st.button(text, key=f"btn_{st.session_state.step}_{text}"):
-            st.session_state.scores[archetyp] += 1
-            st.session_state.step += 1
-            st.rerun()
+# =========================================================
+# 3. LOGIKA INTERAKCJI (DZIENNIK)
+# =========================================================
 
-# FAZA WYNIKU
-elif st.session_state.step >= len(QUESTIONS_DATABASE):
-    final_archetyp = max(st.session_state.scores, key=st.session_state.scores.get)
-    wynik = AURA_DEFINITIONS[final_archetyp]
+# Instrukcja osobowości dla AI
+SYSTEM_PROMPT = """Jesteś tajemniczym, inteligentnym Dziennikiem. 
+Twoim zadaniem jest interakcja z użytkownikiem, ale nie jesteś pomocnym asystentem. 
+Jesteś wnikliwym obserwatorem, który czyta między wierszami. 
+Twoje odpowiedzi są krótkie (max 2 zdania), mroczne, prowokujące i niezwykle trafne. 
+Dostrzegaj lęk, wahanie lub pychę w słowach użytkownika. 
+Gdy zaczynasz rozmowę, zadaj jedno nieoczekiwane pytanie, które uderzy w konkretny szczegół."""
+
+# Inicjalizacja sesji
+if "messages" not in st.session_state:
+    st.session_state.messages = []
     
-    st.markdown(f'<div class="result-title">{wynik["tytul"]}</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="result-desc">{wynik["opis"]}</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="result-question">{wynik["pytanie"]}</div>', unsafe_allow_html=True)
+    # PIERWSZY RUCH DZIENNIKA
+    with st.spinner(""):
+        first_q = call_ai(
+            [{"role": "user", "content": "Zbudź się i przejmij inicjatywę. Zadaj mi pierwsze pytanie."}], 
+            SYSTEM_PROMPT
+        )
+        st.session_state.messages.append({"role": "assistant", "content": first_q})
+
+# Nagłówek
+st.markdown('<h1 style="text-align:center; font-weight:100; letter-spacing:1.5rem; color:#F8FAFC; margin-bottom:0;">SZEPT</h1>', unsafe_allow_html=True)
+st.markdown('<p style="text-align:center; color:#1E293B; letter-spacing:0.5rem; font-size:0.7rem; margin-bottom:50px;">INTERAKTYWNY ARTEFAKT</p>', unsafe_allow_html=True)
+
+# Wyświetlanie rozmowy
+st.markdown('<div class="journal-container">', unsafe_allow_html=True)
+for m in st.session_state.messages:
+    if m["role"] == "assistant":
+        st.markdown(f'<div class="ai-text">{m["content"]}</div>', unsafe_allow_html=True)
+    else:
+        st.markdown(f'<div class="user-text"> — {m["content"]}</div>', unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
+
+# Wejście użytkownika (Chat Input na dole)
+user_input = st.chat_input("Napisz coś, by wchłonął to atrament...")
+
+if user_input:
+    # Dodaj wpis użytkownika
+    st.session_state.messages.append({"role": "user", "content": user_input})
     
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    if st.button("RESETUJ PROFIL"):
+    # Generuj odpowiedź dziennika
+    with st.spinner(""):
+        response = call_ai(st.session_state.messages, SYSTEM_PROMPT)
+        st.session_state.messages.append({"role": "assistant", "content": response})
+    
+    # Odśwież, by pokazać nową treść
+    st.rerun()
+
+# Panel boczny tylko dla Resetu
+with st.sidebar:
+    st.markdown("### Zarządzanie Artefaktem")
+    if st.button("SPAL STRONY (RESET)"):
         st.session_state.clear()
         st.rerun()
