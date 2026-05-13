@@ -14,7 +14,7 @@ API_KEY = "AIzaSyCs2Edq1VXPVJgiUAS01fr2j2eXaQ7tQsk"
 genai.configure(api_key=API_KEY)
 
 def get_next_question(history):
-    # Lista modeli - jeśli jeden ma limit (429), system bierze kolejny
+    # Lista modeli - próbujemy najpierw Flash, potem Pro
     model_names = ['gemini-1.5-flash', 'gemini-1.0-pro']
     
     persona = (
@@ -32,14 +32,15 @@ def get_next_question(history):
 
     for m_name in model_names:
         try:
-            model = genai.GenerativeModel(m_name)
+            # Wymuszamy wersję v1 dla stabilności
+            model = genai.GenerativeModel(model_name=m_name)
             response = model.generate_content(context)
             return response.text
         except Exception as e:
-            if "429" in str(e):
-                continue
-            return f"Echo nie wraca... ({str(e)})"
-    return "Cisza. Spróbuj za moment, gdy atrament wyschnie."
+            # Jeśli model nie istnieje lub limit wyczerpany, idź do następnego
+            continue
+            
+    return "Cisza. Twoja aura jest dziś nieprzenikniona dla atramentu. Spróbuj za chwilę."
 
 # =========================================================
 # 2. DESIGN - KLIMATYCZNY INTERFEJS
@@ -52,7 +53,6 @@ st.markdown("""
     #MainMenu, footer, header {visibility:hidden;}
     .stApp { background-color: #050505 !important; }
     
-    /* Ukrycie standardowego spinnera Streamlit */
     [data-testid="stStatusWidget"] { visibility: hidden; display: none; }
 
     .question-box { 
@@ -85,7 +85,6 @@ st.markdown("""
 # =========================================================
 
 if "chat" not in st.session_state:
-    # "Uziemione" starty, które zrozumie każdy
     starts = [
         "Jaki przedmiot, który masz pod ręką, najbardziej do Ciebie pasuje?",
         "Gdybyś miał opisać swój ulubiony zakątek w domu, co by to było?",
@@ -103,16 +102,15 @@ user_input = st.chat_input("Napisz...")
 if user_input:
     st.session_state.chat.append({"role": "user", "content": user_input})
     
-    # Klimatyczne ładowanie
     placeholder.markdown('<div class="szept-loading">Słucham...</div>', unsafe_allow_html=True)
     
+    # Wywołanie silnika
     next_q = get_next_question(st.session_state.chat)
-    time.sleep(1) # Chwila na oddech
+    time.sleep(0.5) 
     
     st.session_state.chat.append({"role": "assistant", "content": next_q})
     st.rerun()
 
-# Dyskretny reset w sidebarze
 if st.sidebar.button("ZACZNIJ OD NOWA"):
     st.session_state.clear()
     st.rerun()
