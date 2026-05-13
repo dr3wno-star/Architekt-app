@@ -10,7 +10,7 @@ import google.generativeai as genai
 # TUTAJ WKLEJ SWÓJ KLUCZ
 API_KEY = "AIzaSyCCtHo_I9MCk5ud7frk_wn3XnVhUM7EwAI" 
 
-if API_KEY != "TWOJ_KLUCZ_API":
+if API_KEY != "AIzaSyCCtHo_I9MCk5ud7frk_wn3XnVhUM7EwAI":
     genai.configure(api_key=API_KEY)
     model = genai.GenerativeModel('gemini-1.5-flash')
 else:
