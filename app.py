@@ -6,7 +6,7 @@ import json
 st.set_page_config(page_title="SZEPT", layout="centered")
 
 # WPISZ TUTAJ SWÓJ KLUCZ (ZACHOWAJ CUDZYSŁÓW)
-API_KEY = "AIzaSyAL4HJb436zbaSSXiTintuDfGdebeDKGo4" 
+API_KEY = "AIzaSyDyDj6oc_N2CJrTtx1drTiKIXHIpfSKNAQ" 
 
 def szept_engine(history):
     # Zmiana na v1beta i model gemini-pro (największa kompatybilność)
