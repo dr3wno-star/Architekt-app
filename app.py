@@ -6,6 +6,69 @@ import json
 from google.cloud import firestore
 from google.oauth2 import service_account
 
+# ... (Inicjalizacja DB i Style pozostają bez zmian) ...
+
+def call_gemini(prompt, system_prompt="", is_json=False):
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={st.secrets['GEMINI_KEY']}"
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "systemInstruction": {"parts": [{"text": system_prompt}]},
+        "generationConfig": {"temperature": 0.9, "responseMimeType": "application/json" if is_json else "text/plain"}
+    }
+    try:
+        r = requests.post(url, json=payload, timeout=30)
+        return r.json()['candidates'][0]['content']['parts'][0]['text']
+    except: return None
+
+# --- NOWA LOGIKA PYTAŃ ---
+if "qs" not in st.session_state:
+    with st.spinner("Architekt buduje przestrzeń..."):
+        # Generujemy unikalne pytanie na start
+        start_q = call_gemini("Wygeneruj jedno, niezwykle rzadkie i poetyckie pytanie otwierające dla aplikacji SZEPT. Unikaj banałów typu 'Jak minął dzień'. Zapytaj o coś ulotnego.", "Jesteś mistrzem nastroju.")
+        st.session_state.qs = [start_q if start_q else "Co dziś w Tobie milczy najgłośniej?"]
+
+# --- WIDOK KOŃCOWY (ZWIĘKSZONA SZCZEGÓŁOWOŚĆ) ---
+if st.session_state.get("finished"):
+    if "aura_data" not in st.session_state:
+        with st.spinner("Szukanie Twojej częstotliwości..."):
+            sys = """Jesteś ekspertem analizy emocjonalnej. Twoim zadaniem jest stworzenie unikalnego profilu 'Aury'.
+            Zwróć WYŁĄCZNIE JSON:
+            {
+              "aura_name": "unikalna, dwuczłonowa nazwa",
+              "visual_tone": "opis koloru i światła (np. 'Zgaszony błękit poranka')",
+              "texture": "jeden przymiotnik określający teksturę emocji",
+              "deep_insight": "bardzo osobista, 2-zdaniowa analiza unikająca banałów",
+              "hex_color": "kod koloru pasujący do nastroju",
+              "whisper_quote": "cytat"
+            }
+            ZASADA: Bądź konkretny. Jeśli użytkownik pisze o kawie i deszczu, nie pisz o 'spokoju', pisz o 'melancholii mokrego asfaltu'."""
+            
+            res = call_gemini(f"Analizuj te wyznania: {st.session_state.answers}", sys, is_json=True)
+            st.session_state.aura_data = json.loads(res)
+            # (Tutaj save_whisper...)
+
+    aura = st.session_state.aura_data
+    
+    # Dynamiczna zmiana tła na kolor aury
+    st.markdown(f"<style>.stApp {{ background: radial-gradient(circle at top, {aura['hex_color']}44 0%, #08080A 80%) !important; }}</style>", unsafe_allow_html=True)
+
+    st.markdown(f"""
+    <div class="card">
+        <div style="font-size:0.6rem; letter-spacing:0.5rem; color:#475569;">PROFIL OBECNOŚCI</div>
+        <div style="font-size:3.2rem; font-family:'Bodoni Moda', serif;">{aura['aura_name']}</div>
+        <div style="color:{aura['hex_color']}; font-size:0.8rem; letter-spacing:0.2rem; margin-top:10px;">{aura['visual_tone'].upper()} • {aura['texture'].upper()}</div>
+        <hr style="border-color:rgba(255,255,255,0.05); margin:30px 0;">
+        <div style="color:#CBD5E1; line-height:1.8; font-weight:200; font-size:1.1rem;">{aura['deep_insight']}</div>
+        <div style="font-style:italic; color:#64748B; margin-top:30px;">"{aura['whisper_quote']}"</div>
+    </div>
+    """, unsafe_allow_html=True)import streamlit as st
+import requests
+import random
+import time
+import json
+from google.cloud import firestore
+from google.oauth2 import service_account
+
 # =========================================================
 # 1. KONFIGURACJA I FIREBASE (FIRESTORE)
 # =========================================================
