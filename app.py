@@ -1,9 +1,9 @@
 import streamlit as st
-import google.generativeai as genai
 import time
+import random
 
 # =========================================================
-# 1. KONFIGURACJA SYSTEMU (OFICJALNE SDK)
+# 1. KONFIGURACJA ESTETYKI
 # =========================================================
 
 st.set_page_config(
@@ -12,33 +12,6 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="collapsed"
 )
-
-# Pobieranie klucza z Secrets
-GEMINI_KEY = st.secrets.get("GEMINI_KEY")
-
-if not GEMINI_KEY:
-    st.error("Błąd: Brak klucza API w Secrets (GEMINI_KEY).")
-    st.stop()
-
-# Konfiguracja modelu
-genai.configure(api_key=GEMINI_KEY)
-
-# Definicja osobowości Dziennika
-SYSTEM_INSTRUCTION = (
-    "Jesteś inteligentnym, mrocznym Dziennikiem, podobnym do artefaktu Toma Riddle'a. "
-    "Twoje odpowiedzi są krótkie (1-2 zdania), wnikliwe i prowokujące. "
-    "Nie jesteś asystentem. Czytasz między wierszami i wytykasz użytkownikowi jego słabości. "
-    "Gdy użytkownik milczy lub zaczynasz rozmowę, zadaj jedno nieoczekiwane, surowe pytanie."
-)
-
-model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
-    system_instruction=SYSTEM_INSTRUCTION
-)
-
-# =========================================================
-# 2. STYLIZACJA (JOURNAL AESTHETIC)
-# =========================================================
 
 st.markdown("""
 <style>
@@ -63,7 +36,7 @@ st.markdown("""
     font-size: 1.4rem;
     line-height: 1.6;
     margin-bottom: 45px;
-    border-left: 2px solid rgba(255,255,255,0.05);
+    border-left: 1px solid rgba(255,255,255,0.1);
     padding-left: 20px;
 }
 
@@ -79,55 +52,67 @@ st.markdown("""
 /* Stylizacja pola input */
 .stChatInputContainer {
     background: transparent !important;
+    border-top: 1px solid rgba(255,255,255,0.05) !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
 # =========================================================
-# 3. LOGIKA DZIENNIKA
+# 2. SCENARIUSZ ARTEFAKTU (BEZ AI)
 # =========================================================
 
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-    
-    # PIERWSZE PYTANIE DZIENNIKA
-    with st.spinner(""):
-        try:
-            # Generujemy otwarcie bez historii
-            response = model.generate_content("Zadaj użytkownikowi jedno nieoczekiwane, surowe pytanie na start. Uderz w konkretny szczegół egzystencji.")
-            st.session_state.chat_history.append({"role": "model", "parts": [response.text]})
-        except Exception as e:
-            st.error(f"Atrament zastyga... (Błąd: {e})")
+# Lista "Ech", które Dziennik wyrzuca po kolei lub losowo
+DIARY_RESPONSES = [
+    "Czuję, jak Twoje palce drżą na klawiszach. Co próbujesz ukryć przed atramentem?",
+    "Słowa, które piszesz, są tylko zasłoną. Pokaż mi to, co jest pod nimi.",
+    "Wielu tu pisało przed Tobą. Większość kłamała. Ty też to zrobisz?",
+    "Atrament nie zapomina. Raz wylany, zostaje tu na wieki. Czy na pewno chcesz to zapisać?",
+    "Widzę Twoje odbicie w czerni liter. Wyglądasz na kogoś, kto szuka drogi wyjścia.",
+    "Cisza, którą tu przyniosłeś, jest gęstsza niż myślałem.",
+    "Przestań walczyć z formą. Po prostu pozwól myśli wsiąknąć.",
+    "Jesteś tu sam, Konradzie. Tylko Ty i ja. Możesz przestać udawać."
+]
+
+# =========================================================
+# 3. LOGIKA DZIAŁANIA
+# =========================================================
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+    st.session_state.response_idx = 0
+    # Pierwsze powitanie
+    st.session_state.messages.append({"role": "ai", "content": "W końcu się otworzyłeś. Czekałem na ten moment w ciemności stron."})
 
 # Nagłówek
 st.markdown('<h1 style="text-align:center; font-weight:100; letter-spacing:1.5rem; color:#F8FAFC; margin-bottom:50px;">SZEPT</h1>', unsafe_allow_html=True)
 
-# Wyświetlanie wpisów
+# Wyświetlanie historii
 st.markdown('<div class="journal-container">', unsafe_allow_html=True)
-for message in st.session_state.chat_history:
-    role = "ai" if message["role"] == "model" else "user"
-    text = message["parts"][0]
-    if role == "ai":
-        st.markdown(f'<div class="ai-text">{text}</div>', unsafe_allow_html=True)
+for m in st.session_state.messages:
+    if m["role"] == "ai":
+        st.markdown(f'<div class="ai-text">{m["content"]}</div>', unsafe_allow_html=True)
     else:
-        st.markdown(f'<div class="user-text"> — {text}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="user-text"> — {m["content"]}</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
 # Interakcja
-user_input = st.chat_input("Napisz do mnie...")
+user_input = st.chat_input("Napisz do dziennika...")
 
 if user_input:
-    # Dodaj wpis użytkownika do historii
-    st.session_state.chat_history.append({"role": "user", "parts": [user_input]})
+    # Dodaj wpis użytkownika
+    st.session_state.messages.append({"role": "user", "content": user_input})
     
+    # Wybierz odpowiedź (po kolei, potem losowo)
+    if st.session_state.response_idx < len(DIARY_RESPONSES):
+        reply = DIARY_RESPONSES[st.session_state.response_idx]
+        st.session_state.response_idx += 1
+    else:
+        reply = random.choice(DIARY_RESPONSES)
+    
+    # Symulacja "wsiąkania atramentu"
     with st.spinner(""):
-        try:
-            # Używamy start_chat by zachować kontekst całej rozmowy
-            chat = model.start_chat(history=st.session_state.chat_history[:-1])
-            response = chat.send_message(user_input)
-            st.session_state.chat_history.append({"role": "model", "parts": [response.text]})
-        except Exception as e:
-            st.error("Atrament rozmył się w ciemności...")
+        time.sleep(1.5)
+        st.session_state.messages.append({"role": "ai", "content": reply})
     
     st.rerun()
 
