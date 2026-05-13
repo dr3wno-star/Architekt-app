@@ -2,15 +2,16 @@ import streamlit as st
 import google.generativeai as genai
 
 # =========================================================
-# 1. SILNIK PROFILOWANIA I MATCHINGU
+# 1. RDZEŃ DIAGNOSTYCZNY (BACK-TO-BASICS)
 # =========================================================
 
-st.set_page_config(page_title="SZEPT - Aura Profile", layout="centered")
+st.set_page_config(page_title="SZEPT", layout="centered")
 
+# TWÓJ KLUCZ API
 API_KEY = "AIzaSyDCmJ-nxrYU3w1MSzPNij5KYd6r1Btfbog" 
 
 @st.cache_resource
-def init_engine():
+def get_model():
     try:
         genai.configure(api_key=API_KEY)
         for m in genai.list_models():
@@ -18,23 +19,21 @@ def init_engine():
         return None
     except: return None
 
-WORKING_MODEL = init_engine()
+WORKING_MODEL = get_model()
 
-def profile_aura(history):
-    if not WORKING_MODEL: return "Błąd systemu."
+def get_next_question(history):
+    if not WORKING_MODEL: return "Błąd połączenia."
     
     try:
         model = genai.GenerativeModel(WORKING_MODEL)
         
-        # NOWA PERSONA: Diagnosta i Matchmaker
+        # PROTOKÓŁ: Sekwencyjna Inwigilacja Aury
         persona = (
-            "Jesteś Dziennikiem Profilującym. Twoim celem jest wybadanie 'Aury' użytkownika, "
-            "aby ocenić, do kogo pasuje. Analizujesz trzy filary: "
-            "1. Energia (spokojna vs chaotyczna), 2. Barwa (ciepła/empatyczna vs zimna/analityczna), "
-            "3. Rezonans (dominujący vs uległy). "
-            "Nie błądź w poezji. Zadawaj pytania lub wyciągaj wnioski, które określają typ osobowości. "
-            "Twoim celem jest stworzenie profilu psychologicznego 'Aury'. "
-            "Bądź konkretny, badawczy i lekko dystansujący się. Max 20 słów."
+            "Jesteś Dziennikiem Badawczym. Twoim celem jest przeprowadzenie wywiadu profilującego aurę. "
+            "ZASADA: Na podstawie ostatniej odpowiedzi użytkownika zadaj jedno, celne pytanie, "
+            "które pogłębi analizę jego temperamentu i energii. "
+            "Zaczynaj od pytań luźnych, przechodząc w coraz bardziej kierunkowe i intymne. "
+            "Nie wyciągaj jeszcze wniosków. Tylko pytaj. Krótko, chłodno, precyzyjnie. Max 15 słów."
         )
         
         context = f"SYSTEM: {persona}\n\n"
@@ -45,35 +44,35 @@ def profile_aura(history):
         response = model.generate_content(context)
         return response.text
     except Exception as e:
-        return f"Błąd skanu: {str(e)}"
+        return f"Przerwanie skanu: {str(e)}"
 
 # =========================================================
-# 2. DESIGN (INTERFEJS DIAGNOSTYCZNY)
+# 2. DESIGN (SUROWY MINIMALIZM)
 # =========================================================
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;300;400&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;400&display=swap');
     #MainMenu, footer, header {visibility:hidden;}
-    .stApp { background-color: #020203 !important; color: #f0f0f0; }
+    .stApp { background-color: #050505 !important; color: #888; }
     
-    .aura-box { 
+    .question-box { 
         font-family: 'Inter', sans-serif; 
-        font-size: 1.2rem; 
-        color: #ffffff; 
-        margin-bottom: 2rem; 
-        border-left: 1px solid #00f2ff; /* Neonowy akcent diagnostyczny */
-        padding: 20px; 
-        background: rgba(0, 242, 255, 0.02);
-        line-height: 1.6;
+        font-size: 1.4rem; 
+        color: #eee; 
+        margin-top: 100px;
+        margin-bottom: 50px; 
+        text-align: center;
+        font-weight: 200;
+        letter-spacing: 1px;
     }
     
-    .user-input { 
+    .history-text { 
         font-family: 'Inter', sans-serif;
-        color: #666; 
-        margin-bottom: 1rem; 
-        text-align: right; 
-        font-weight: 100;
+        font-size: 0.8rem;
+        color: #333; 
+        margin-bottom: 5px; 
+        text-align: center;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -82,31 +81,30 @@ st.markdown("""
 # 3. INTERFEJS
 # =========================================================
 
-st.markdown('<h1 style="text-align:center; font-weight:100; letter-spacing:1rem; margin-top:40px; color:#00f2ff; opacity:0.5;">SZEPT // AURA SCAN</h1>', unsafe_allow_html=True)
-
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = [
-        {"role": "assistant", "content": "System gotowy. Wyślij sygnał, bym mógł określić rezonans Twojej aury."}
+if "chat" not in st.session_state:
+    st.session_state.chat = [
+        {"role": "assistant", "content": "Gdybyś był zapachem w opuszczonym domu, czym byś był?"}
     ]
 
-for m in st.session_state.chat_history:
-    if m["role"] == "assistant":
-        st.markdown(f'<div class="aura-box">{m["content"]}</div>', unsafe_allow_html=True)
-    else:
-        st.markdown(f'<div class="user-input">{m["content"]} —</div>', unsafe_allow_html=True)
+# Wyświetlamy tylko ostatnie pytanie na środku (focus mode)
+last_question = st.session_state.chat[-1]["content"]
+st.markdown(f'<div class="question-box">{last_question}</div>', unsafe_allow_html=True)
 
-user_input = st.chat_input("Napisz coś szczerze...")
+# Historia (mały druk na dole dla kontekstu)
+with st.expander("Ślad Twoich odpowiedzi"):
+    for m in st.session_state.chat[:-1]:
+        prefix = "— " if m["role"] == "user" else ""
+        st.markdown(f'<div class="history-text">{prefix}{m["content"]}</div>', unsafe_allow_html=True)
+
+user_input = st.chat_input("Odpowiedz...")
 
 if user_input:
-    st.session_state.chat_history.append({"role": "user", "content": user_input})
-    with st.spinner("Przetwarzanie częstotliwości..."):
-        analysis = profile_aura(st.session_state.chat_history)
-        st.session_state.chat_history.append({"role": "assistant", "content": analysis})
+    st.session_state.chat.append({"role": "user", "content": user_input})
+    with st.spinner(" "):
+        next_q = get_next_question(st.session_state.chat)
+        st.session_state.chat.append({"role": "assistant", "content": next_q})
     st.rerun()
 
-with st.sidebar:
-    st.markdown("### Parametry Dopasowania")
-    st.caption("Dziennik analizuje Twoje cechy, by znaleźć kompatybilne profile.")
-    if st.button("WYCZYŚĆ PROFIL"):
-        st.session_state.clear()
-        st.rerun()
+if st.sidebar.button("ZACZNIJ OD NOWA"):
+    st.session_state.clear()
+    st.rerun()
