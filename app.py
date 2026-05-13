@@ -4,7 +4,7 @@ import json
 import time
 
 # =========================================================
-# 1. KONFIGURACJA
+# 1. KONFIGURACJA I SILNIK
 # =========================================================
 
 st.set_page_config(page_title="SZEPT", page_icon="📖", layout="centered")
@@ -23,7 +23,7 @@ def call_ai(messages, sys_prompt):
     payload = {
         "contents": contents,
         "systemInstruction": {"parts": [{"text": sys_prompt}]},
-        "generationConfig": {"temperature": 1.0} # Wyższa temperatura dla unikalności
+        "generationConfig": {"temperature": 1.0, "maxOutputTokens": 150}
     }
     try:
         r = requests.post(url, json=payload, timeout=25)
@@ -31,7 +31,7 @@ def call_ai(messages, sys_prompt):
     except: return "Atrament zastyga w bezruchu..."
 
 # =========================================================
-# 2. ESTETYKA
+# 2. ESTETYKA DZIENNIKA
 # =========================================================
 
 st.markdown("""
@@ -42,81 +42,84 @@ st.markdown("""
 .journal-page {
     border-left: 1px solid rgba(255,255,255,0.05);
     padding-left: 30px;
-    margin-top: 50px;
+    margin-top: 30px;
     font-family: 'Inter', sans-serif;
 }
-.user-text { color: #8892B0; font-style: italic; margin-bottom: 25px; border-bottom: 1px solid rgba(255,255,255,0.02); padding-bottom: 5px; }
+.user-text { color: #57607A; font-style: italic; margin-bottom: 25px; font-size: 0.95rem; }
 .ai-text { 
     color: #F8FAFC; 
     font-family: 'Bodoni Moda', serif; 
-    font-size: 1.25rem; 
-    margin-bottom: 45px;
+    font-size: 1.3rem; 
+    margin-bottom: 40px;
     line-height: 1.6;
+    animation: fade 3s ease-in;
 }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 </style>
 """, unsafe_allow_html=True)
 
 # =========================================================
-# 3. LOGIKA DZIENNIKA (INTERAKCJA)
+# 3. LOGIKA INTERAKCJI
 # =========================================================
 
+# Inicjalizacja Dziennika
 if "journal" not in st.session_state:
     st.session_state.journal = []
     st.session_state.finished = False
     
-    # DZIENNIK ZADAJE PIERWSZE PYTANIE
-    with st.spinner("Dziennik otwiera się..."):
-        sys_init = "Jesteś świadomym, tajemniczym Dziennikiem. Twoim zadaniem jest przywitać nowego użytkownika jednym, niezwykle przenikliwym i nieoczekiwanym pytaniem. Nie pytaj o dzień ani emocje wprost. Zapytaj o detal, o cień, o coś, co użytkownik wolałby pominąć. Maksymalnie 2 krótkie zdania."
-        first_move = call_ai([{"role": "user", "content": "Otwórz się i przywitaj mnie."}], sys_init)
-        st.session_state.journal.append({"role": "assistant", "content": first_move})
+    # WYMUSZENIE PIERWSZEGO PYTANIA
+    with st.spinner("..."):
+        sys_init = """Jesteś mrocznym, inteligentnym Dziennikiem. Twoim zadaniem jest natychmiastowe 
+        przejęcie inicjatywy. Zadaj użytkownikowi jedno, krótkie, przenikliwe pytanie, które sprawi, 
+        że poczuje się obserwowany. Nie pytaj o emocje. Zapytaj o coś, co ma przed oczami, 
+        o czym myślał przed chwilą, albo o rzecz, którą ukrywa. Maksymalnie 15 słów."""
+        
+        first_q = call_ai([{"role": "user", "content": "Zadaj mi pierwsze pytanie."}], sys_init)
+        st.session_state.journal.append({"role": "assistant", "content": first_q})
 
 st.markdown('<h1 style="font-weight:100; letter-spacing:1.2rem; text-align:center; margin-bottom:0;">SZEPT</h1>', unsafe_allow_html=True)
-st.markdown('<p style="text-align:center; color:#334155; font-size:0.7rem; letter-spacing:0.3rem; margin-bottom:50px;">INTERAKTYWNY ARTEFAKT</p>', unsafe_allow_html=True)
 
-# Wyświetlanie wpisów
-journal_container = st.container()
-with journal_container:
-    st.markdown('<div class="journal-page">', unsafe_allow_html=True)
-    for m in st.session_state.journal:
-        if m["role"] == "user":
-            st.markdown(f'<div class="user-text">{m["content"]}</div>', unsafe_allow_html=True)
-        else:
-            st.markdown(f'<div class="ai-text">{m["content"]}</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+# Wyświetlanie historii
+st.markdown('<div class="journal-page">', unsafe_allow_html=True)
+for m in st.session_state.journal:
+    if m["role"] == "user":
+        st.markdown(f'<div class="user-text"> — {m["content"]}</div>', unsafe_allow_html=True)
+    else:
+        st.markdown(f'<div class="ai-text">{m["content"]}</div>', unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
 
-# Interfejs wprowadzania danych
+# Pole wejściowe
 if not st.session_state.finished:
     with st.form("input_form", clear_on_submit=True):
-        user_input = st.text_area("", placeholder="Odpowiedz atramentem...", height=100)
-        c1, c2, c3 = st.columns([2, 1, 1])
-        with c3:
-            submit = st.form_submit_button("ODDAJ SŁOWA")
+        user_input = st.text_input("Napisz do mnie...", label_visibility="collapsed")
+        c1, c2 = st.columns([5, 1])
         with c2:
-            finish = st.form_submit_button("ZAMKNIJ")
+            submit = st.form_submit_button("POZWÓL WSIĄKNĄĆ")
+        with c1:
+            if st.form_submit_button("ZAMKNIJ DZIENNIK"):
+                st.session_state.finished = True
+                st.rerun()
 
     if submit and user_input.strip():
         st.session_state.journal.append({"role": "user", "content": user_input})
         
-        sys_prompt = "Jesteś Dziennikiem. Reaguj na słowa użytkownika. Bądź inteligentny, nieco prowokujący, dostrzegaj to, co ukryte między wierszami. Odpowiadaj krótko (1-3 zdania). Prowadź dialog, nie ankietę."
+        sys_prompt = """Jesteś Dziennikiem. Nie jesteś asystentem. Reaguj na to, co pisze użytkownik. 
+        Bądź oszczędny w słowach, prowokuj do dalszego pisania. Odpowiadaj krótko i mądrze. 
+        Dostrzegaj kłamstwa i wahania. Maksymalnie 2 zdania."""
         
-        with st.spinner("Wchłanianie..."):
-            response = call_ai(st.secrets.get("journal", st.session_state.journal), sys_prompt)
+        with st.spinner("Atrament chłonie..."):
+            response = call_ai(st.session_state.journal, sys_prompt)
             st.session_state.journal.append({"role": "assistant", "content": response})
         st.rerun()
 
-    if finish:
-        st.session_state.finished = True
-        st.rerun()
-
 else:
-    # PODSUMOWANIE DZIENNIKA
+    # FINALNA DEKONSTRUKCJA
     st.markdown("---")
-    with st.spinner("Dziennik analizuje Twój ślad..."):
-        analysis_prompt = f"Na podstawie tej rozmowy: {st.session_state.journal}. Podsumuj naszą interakcję. Co dziś w Tobie przeczytałem? Opisz to jako Architekt dusz, unikając banałów."
-        final_insight = call_ai([{"role": "user", "content": analysis_prompt}], "Jesteś surowym obserwatorem prawdy.")
-        
-        st.markdown(f'<div style="padding:40px; border:1px solid #1E293B; font-family:serif; font-style:italic; font-size:1.1rem; line-height:1.8;">{final_insight}</div>', unsafe_allow_html=True)
+    with st.spinner("Dziennik zamyka Twoją historię..."):
+        analysis_prompt = f"Rozmowa: {st.session_state.journal}. Podsumuj kim jest ten człowiek w tym momencie. Bądź surowy i konkretny."
+        final_insight = call_ai([{"role": "user", "content": analysis_prompt}], "Jesteś Architektem Prawdy.")
+        st.markdown(f'<div style="padding:30px; border:1px solid #1E293B; font-family:serif; font-style:italic;">{final_insight}</div>', unsafe_allow_html=True)
 
-    if st.button("SPAL DZIENNIK (RESET)"):
+    if st.button("ROZEDRZYJ KARTKI (RESET)"):
         st.session_state.clear()
         st.rerun()
